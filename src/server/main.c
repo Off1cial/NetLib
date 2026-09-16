@@ -4,7 +4,7 @@
 
 netserver_t server = {0};
 #define MAX_CLIENTS 10
-#define TICKRATE 1
+#define TICKRATE 20
 #define PORT 27015
 
 void is_running(void){

@@ -13,6 +13,14 @@ typedef uint16_t netpacktype_t;
 
 #define NETSOCK_ISNULL(sock) (sock == NETSOCK_INVALID)
 
+#define DOFUNC(func, ...) \
+    do { \
+        if ((func)) \
+            (func)(__VA_ARGS__); \
+    } while (0)
+
+
+
 typedef size_t netsize_t;
 
 // Host side address data - automatically converted to network-side when used
@@ -44,6 +52,8 @@ typedef struct {
 static inline bool netaddr_equal(netaddr_t a, netaddr_t b){
     return (a.ip == b.ip) && (a.port == b.port);
 }
+
+netaddr_t netaddr_new(char* ip, u16 port);
 
 netsock_t netsock_create_udp(void);
 netsock_t netsock_create_tcp(void);

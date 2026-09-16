@@ -10,12 +10,6 @@
 #include <unistd.h>
 
 
-#define DOFUNC(func, ...) \
-    do { \
-        if ((func)) \
-            (func)(__VA_ARGS__); \
-    } while (0)
-
 static inline 
 netaddr_t _sockaddr_to_netaddr(struct sockaddr_in addr){
     return (netaddr_t){.port = addr.sin_port, .ip = addr.sin_addr.s_addr};
@@ -73,46 +67,17 @@ void remove_client(netserver_t* server, net_svclient_t* client){
 }
 
 
+static void sv_recv(netserver_t* server){
 
-void sv_recv(netserver_t *server){
-    for (u32 i = 0; i < server->client_limit; i++){
-        struct sockaddr_in fromaddr;
-        socklen_t fromlen;
-        
-        size_t recvsize = 0; 
+    char buff[NET_MAX_PACKET];
+    netsize_t size = 0;
+
+    netaddr_t from;
+
+    size = netsock_receive(server->socket_udp, buff, NET_MAX_PACKET, &from);
+    printf("Received %zd byte(s)\n", size);
     
-        char buff[NET_MAX_PACKET];
-
-        while (( 
-                recvsize = recvfrom(
-                    server->socket_udp,
-                    buff, NET_MAX_PACKET,
-                    MSG_DONTWAIT, 
-                    (struct sockaddr*)&fromaddr,
-                    &fromlen
-                    )
-        ) > 0){
-            
-            netpacktype_t packet_type = ((netpacktype_t*)buff)[0];
-            int client_id = _id_clientaddr(server, _sockaddr_to_netaddr(fromaddr));
-
-            switch(packet_type){
-                case NET_PACKET_NETCMD:
-                    netcmd_t cmd;
-                    _extract_netcmd(
-                            buff + sizeof(netpacktype_t),
-                            NET_PACKET_NETCMD - sizeof(netpacktype_t),
-                            &cmd);
-                    //server->func_process_netcmd(cmd);
-                    DOFUNC(server->func_process_netcmd, cmd);
-                    break;
-            }
-
-
-        }
-    }
 }
-
 
 static double accum = 0.0;
 static double previous = 0.0;
@@ -124,6 +89,7 @@ void sv_run(netserver_t *server){
     
     while (accum >= (1.0f / server->tickrate)){
         //if(server->func_run) server->func_run();
+        sv_recv(server);
         DOFUNC(server->func_run);
         accum -= (1.0f / server->tickrate);
     }

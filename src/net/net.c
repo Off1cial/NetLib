@@ -5,11 +5,22 @@
 #include <winsock2.h>
 #else
 #include <sys/socket.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <arpa/inet.h>
 #endif
 
 #define ADDRCAST(sockaddrin) (struct sockaddr*)&sockaddrin
+
+netaddr_t netaddr_new(char* ip, u16 port){
+    netaddr_t addr = {0};
+    inet_pton(AF_INET, ip, &addr.ip);
+    addr.ip = ntohl(addr.ip);
+    addr.port = port;
+    return addr;
+}
+
 
 static inline 
 netaddr_t _sockaddr_to_netaddr(struct sockaddr_in addr){
@@ -82,12 +93,20 @@ netresult_t netsock_connect(netsock_t sock, netaddr_t addr){
 }
 
 netsize_t netsock_senddata(netsock_t sock, netaddr_t dest, char* data, netsize_t n){
-    if (NETSOCK_ISNULL(sock))
+    if (NETSOCK_ISNULL(sock)){
+        fprintf(stderr, "NetSend: Invalid socket\n");
         return 0;
+    }
     struct sockaddr_in destaddr = _netaddr_to_sockaddr(dest);
-    return (netsize_t)sendto(sock, data, n, 0, ADDRCAST(destaddr), sizeof(destaddr));
+    netsize_t size = sendto(sock, data, n, 0, ADDRCAST(destaddr), sizeof(destaddr));
+    if (size < 0){
+        perror("sendto");
+    }
+
+    return size;
 }
 
+/*
 netsize_t netsock_receive(netsock_t sock, char* output, netsize_t n, netaddr_t* who){
     if (NETSOCK_ISNULL(sock)){
         return 0;
@@ -104,6 +123,37 @@ netsize_t netsock_receive(netsock_t sock, char* output, netsize_t n, netaddr_t* 
     return in_size;
     *who = _sockaddr_to_netaddr(from);
 }
+*/
 
+
+netsize_t netsock_receive(
+    netsock_t sock,
+    char* output,
+    netsize_t n,
+    netaddr_t* who
+){
+    if (NETSOCK_ISNULL(sock))
+        return 0;
+
+    struct sockaddr_in from = {0};
+    socklen_t fromlen = sizeof(from);
+
+    ssize_t received = recvfrom(
+        sock,
+        output,
+        n,
+        MSG_DONTWAIT,
+        (struct sockaddr*)&from,
+        &fromlen
+    );
+
+    if (received < 0)
+        return 0;
+
+    if (who)
+        *who = _sockaddr_to_netaddr(from);
+
+    return (netsize_t)received;
+}
 
 
