@@ -3,6 +3,7 @@
 #include "net/net.h"
 #include "common/plt_time.h"
 #include "net/platform/netplatform.h"
+#include "net/readwrite.h"
 #include <netinet/in.h> 
 #include <string.h>
 #include <stdio.h>
@@ -133,23 +134,56 @@ void sv_run(netserver_t *server){
     }
 }
 
+netresult_size_t NetServer_Broadcast(netserver_t* server, void* data, size_t datalen){
+    size_t buffsize = datalen + NETPKT_HDR_SIZE;
+    char buff[buffsize];
+   
+    netpkthdr_t header = {
+        .size = datalen,
+        .type = NET_PACKET_BROADCAST,
+        .sequence = 0
+    };
+    size_t pos = 0;
+    _write_header(buff, &pos, &header);
+    memcpy(buff + pos, data,  datalen);
+    return netsock_senddata(server->socket_broadcast, server->broadcast_addr, buff, buffsize);
+}
 
-netserver_t* NetServer_Init(int client_limit, uint32_t tickrate, u16 port){
+
+netserver_t* NetServer_Init(int client_limit, uint32_t tickrate, u16 port, u16 broadcast_port){
     netserver_t* server = calloc(1, sizeof(netserver_t));
     memset(server, 0, sizeof(netserver_t));
     server->clients = calloc(client_limit, sizeof(net_svclient_t)); 
     server->client_limit = client_limit;
     server->tickrate = tickrate;
-    server->local_addr.port = port;
-    server->local_addr.ip = 0;
+    //server->local_addr.port = port;
+    //server->local_addr.ip = 0;
+    server->local_addr = netaddr_new("0.0.0.0", port);
+    //server->broadcast_addr = netaddr_newbroadcast(broadcast_port);
+    server->broadcast_addr = netaddr_new("127.0.0.1", broadcast_port);
     server->socket_udp = netsock_create_udp(); 
+    server->socket_broadcast = netsock_create_udp();
+    netsock_set_broadcast(server->socket_broadcast);
     if (!netsock_bind(server->socket_udp, server->local_addr)){
         fprintf(stderr, "Failed to bind server socket\n");
         netsock_close(server->socket_udp);
+        netsock_close(server->socket_broadcast);
         free(server->clients);
         free(server);
         return NULL;
     }
+    /*
+    if (!netsock_bind(server->socket_broadcast, server->broadcast_addr)){
+        fprintf(stderr, "Failed to bind server broadcast socket\n");
+        netsock_close(server->socket_udp);
+        netsock_close(server->socket_broadcast);
+        free(server->clients);
+        free(server);
+        return NULL;
+    }
+    */
+
+
     previous = plt_timemillis();
     char hostname[256];
     char hostip[256];
@@ -165,7 +199,7 @@ void NetServer_Shutdown(netserver_t* server){
     DOFUNC(server->func_shutdown);
     free(server->clients);
     netsock_close(server->socket_udp);
-    memset(server, 0, sizeof(netserver_t));
+memset(server, 0, sizeof(netserver_t));
 }
 
 void NetServer_Run(netserver_t* server){

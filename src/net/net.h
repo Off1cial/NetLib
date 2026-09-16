@@ -17,6 +17,7 @@ typedef u16 netpacktype_t;
 #define NET_PACKET_HNDSHK_DEN 3
 #define NET_PACKET_NETCMD 4
 #define NET_PACKET_NETSNAPSHOT 5
+#define NET_PACKET_BROADCAST 6
 
 typedef i16 netresult_size_t;
 typedef u16 netlen_t;
@@ -79,6 +80,10 @@ static inline bool netaddr_equal(netaddr_t a, netaddr_t b){
     return (a.ip == b.ip) && (a.port == b.port);
 }
 
+static inline bool netaddr_isbroadcast(netaddr_t addr){
+    return (addr.ip == INADDR_BROADCAST);
+}
+
 static inline const char* netaddr_to_string(netaddr_t addr, char* buff, size_t buffn){
     struct in_addr ia;
     ia.s_addr = htonl(addr.ip);
@@ -88,11 +93,16 @@ static inline const char* netaddr_to_string(netaddr_t addr, char* buff, size_t b
 
 netaddr_t netaddr_new(char* ip, u16 port);
 
+static inline netaddr_t netaddr_newbroadcast(u16 port){
+    return (netaddr_t){.ip = INADDR_BROADCAST, .port = port};
+}
+
 netsock_t netsock_create_udp(void);
 netsock_t netsock_create_tcp(void);
 void netsock_close(netsock_t sock);
 
 netresult_t netsock_bind(netsock_t sock, netaddr_t addr);
+netresult_t netsock_set_broadcast(netsock_t sock);
 
 // For use on clients
 netresult_t netsock_connect(netsock_t sock, netaddr_t addr);

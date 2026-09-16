@@ -24,6 +24,7 @@ typedef struct netclient_t
 {
     char name[NET_MAX_STR];
     netconnection_t connection;
+    netsock_t socket_broadcast;
     netclientstate_t cstate;
     
     // Configurables
@@ -32,7 +33,7 @@ typedef struct netclient_t
 
     // Addon funcs, they add to default lib functionality, do not replace. (Client run loop calls this amongst its other routines)
     void (*func_run)(void);
-
+    
     // timers
     double attempt_timer; // Time left for this handshake attempt
     double attempt_lasttime; // milliseconds
@@ -41,7 +42,7 @@ typedef struct netclient_t
 } netclient_t;
 
 
-netclient_t* NetClient_Init(const char* name, size_t namelen);
+netclient_t* NetClient_Init(const char* name, size_t namelen, u16 broadcast_port);
 
 
 // Forms the connection for communication - unrelated to joining a game server

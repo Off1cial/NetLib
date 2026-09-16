@@ -37,14 +37,19 @@ typedef struct {
 
     // Net data
     netaddr_t local_addr;
+    netaddr_t broadcast_addr;
     netsock_t socket_udp;
+    netsock_t socket_broadcast;
     
     // Configurables
     uint32_t tickrate;
 
 } netserver_t;
 
-netserver_t* NetServer_Init(int client_limit, uint32_t tickrate, uint16_t port);
+netserver_t* NetServer_Init(int client_limit, uint32_t tickrate, u16 port, u16 broadcast_port);
 void NetServer_Shutdown(netserver_t* server);
 void NetServer_Run(netserver_t* server);
 
+
+
+netresult_size_t NetServer_Broadcast(netserver_t* server, void* data, size_t datalen);

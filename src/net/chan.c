@@ -37,24 +37,29 @@ netresult_size_t netchan_recv(
         void* buff, 
         size_t buffsize, 
         netpacket_t* pkt){
-   if (!chan || !buff || !pkt) return NETERROR_NULLDATA;
-   if (buffsize <= 0) return NETERROR_INVALIDSIZE;
-   if (sock == NETSOCK_INVALID) return NETERROR_INVALIDSOCKET;
+    if (!chan || !buff || !pkt) return NETERROR_NULLDATA;
+    if (buffsize <= 0) return NETERROR_INVALIDSIZE;
+    if (sock == NETSOCK_INVALID) return NETERROR_INVALIDSOCKET;
     
-   netaddr_t from;
+    netaddr_t from;
 
-   size_t recsize = netsock_receive(sock, buff, buffsize, &from, pkt);
-   if (!netaddr_equal(from, chan->remote)) return NETERROR_UNKNOWNPEER;
+    size_t recsize = netsock_receive(sock, buff, buffsize, &from, pkt);
+    if (recsize <= 0 )
+        return recsize;
 
-   /* Performed by netsock_receive()
+    if ((pkt->type != NET_PACKET_BROADCAST) && !netaddr_equal(from, chan->remote)){
+        return NETERROR_UNKNOWNPEER;
+    } 
+
+    /* Performed by netsock_receive()
     size_t pos = 0;
     netpkthdr_t hdr = _read_header(buff, &pos);
     pkt->type = hdr.type;
     pkt->size = hdr.size;
     pkt->sequence = hdr.sequence;
-   */
+    */
 
-   return recsize;
+    return recsize;
 }
 
 netresult_t netchan_connect(
