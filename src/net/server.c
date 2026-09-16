@@ -27,11 +27,9 @@ int _id_clientaddr(netserver_t *server, netaddr_t addr){
 
 int _extract_netcmd(char* buff, size_t buff_size, netcmd_t* out){
     if (buff_size < sizeof(netcmd_t)){
-        out->valid = 0;
         return 0;
     }
     netcmd_t cmd = ((netcmd_t*)buff)[0];
-    cmd.valid = 1;
     *out = cmd;
     return 1;
 }
@@ -43,6 +41,7 @@ int add_client(netserver_t *server, char* name, netaddr_t addr){
     }
     net_svclient_t client = {0};
     client.chan.remote = addr;
+    client.chan.state = NETCHAN_CONNECTED;
     strncpy(client.name, name, NET_MAX_STR);
     
     u32 id = server->client_count;
@@ -70,12 +69,12 @@ void remove_client(netserver_t* server, net_svclient_t* client){
 static void sv_recv(netserver_t* server){
 
     char buff[NET_MAX_PACKET];
-    netsize_t size = 0;
+    netresult_size_t size = 0;
 
     netaddr_t from;
 
     size = netsock_receive(server->socket_udp, buff, NET_MAX_PACKET, &from);
-    printf("Received %zd byte(s)\n", size);
+    printf("Received %dB\n", size);
     
 }
 

@@ -92,18 +92,17 @@ netresult_t netsock_connect(netsock_t sock, netaddr_t addr){
 #endif
 }
 
-netsize_t netsock_senddata(netsock_t sock, netaddr_t dest, char* data, netsize_t n){
+netresult_size_t netsock_senddata(netsock_t sock, netaddr_t dest, char* data, size_t n){
     if (NETSOCK_ISNULL(sock)){
         fprintf(stderr, "NetSend: Invalid socket\n");
         return 0;
     }
     struct sockaddr_in destaddr = _netaddr_to_sockaddr(dest);
-    netsize_t size = sendto(sock, data, n, 0, ADDRCAST(destaddr), sizeof(destaddr));
+    ssize_t size = sendto(sock, data, n, 0, ADDRCAST(destaddr), sizeof(destaddr));
     if (size < 0){
         perror("sendto");
     }
-
-    return size;
+    return (netresult_size_t)size;
 }
 
 /*
@@ -126,10 +125,10 @@ netsize_t netsock_receive(netsock_t sock, char* output, netsize_t n, netaddr_t* 
 */
 
 
-netsize_t netsock_receive(
+netresult_size_t netsock_receive(
     netsock_t sock,
     char* output,
-    netsize_t n,
+    size_t n,
     netaddr_t* who
 ){
     if (NETSOCK_ISNULL(sock))
@@ -153,7 +152,7 @@ netsize_t netsock_receive(
     if (who)
         *who = _sockaddr_to_netaddr(from);
 
-    return (netsize_t)received;
+    return (size_t)received;
 }
 
 

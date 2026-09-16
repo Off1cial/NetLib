@@ -26,13 +26,25 @@ netclient_t* NetClient_Init(const char* name, size_t namelen){
 
 // Forms the connection for communication - unrelated to joining a game server
 netresult_t NetClient_Connect(netclient_t* client, netaddr_t server_addr){
+        
+    memset(&client->connection.chan, 0, sizeof(netchan_t));
+    client->connection.state = CON_FREE;
     if (NETSOCK_ISNULL(client->connection.socket_udp)){
         client->connection.socket_udp = netsock_create_udp();
     }
+    /*
     netresult_t res = netsock_connect(client->connection.socket_udp, server_addr);
     if (!res)
         return NET_FAILURE;
-    client->connection.remote = server_addr;
+    client->connection.chan.remote = server_addr;
+    client->connection.chan.state = NETCHAN_CONNECTED;
+    */
+    netresult_t res = netchan_connect(
+            &client->connection.chan, 
+            client->connection.socket_udp,
+            server_addr);
+    if (!res) return NET_FAILURE;
+
     client->connection.state = CON_CONNECTED;
     return NET_SUCCESS;
 }

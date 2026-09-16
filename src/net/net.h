@@ -7,10 +7,12 @@
 #define NET_MAX_PACKET 512
 #define NET_MAX_STR 256
 
-typedef uint16_t netpacktype_t;
+typedef u16 netpacktype_t;
 #define NET_PACKET_NETCMD 1
 #define NET_PACKET_NETSNAPSHOT 2
 
+typedef i16 netresult_size_t;
+typedef u16 netlen_t;
 #define NETSOCK_ISNULL(sock) (sock == NETSOCK_INVALID)
 
 #define DOFUNC(func, ...) \
@@ -20,8 +22,26 @@ typedef uint16_t netpacktype_t;
     } while (0)
 
 
+// Tells a client/server - "Receiving a set of data, the interesting section is of size 'netsize_t size'
 
-typedef size_t netsize_t;
+#define NETERROR_WRONGPEER -1
+#define NETERROR_INVALIDSIZE -2
+#define NETERROR_NULLDATA -3
+#define NETERROR_INVALIDSOCKET -4
+
+typedef struct {
+    u32 sequence;
+    netlen_t size; // size of corresponding data in the buffer
+    netpacktype_t type;
+}netpkthdr_t;
+
+typedef struct {
+    netpacktype_t type;
+    u32 sequence;
+
+    const void* data;
+    netlen_t size;
+} netpacket_t;
 
 // Host side address data - automatically converted to network-side when used
 typedef struct {
@@ -33,8 +53,6 @@ typedef struct {
 typedef struct netcmd_t{
     size_t size;
     void* data;
-    u32 sequence;
-    u8 valid; // Server-side validation
 } netcmd_t;
 
 typedef struct netsnapshot_t{
@@ -45,9 +63,6 @@ typedef struct netsnapshot_t{
     u32 ack;
 } netsnapshot_t;
 
-typedef struct {
-   netaddr_t remote;
-} netchan_t; // Net channel?
 
 static inline bool netaddr_equal(netaddr_t a, netaddr_t b){
     return (a.ip == b.ip) && (a.port == b.port);
@@ -72,11 +87,11 @@ netresult_t netsock_connect(netsock_t sock, netaddr_t addr);
  * @param sock source socket
  * @param dest host-side destination address
  */
-netsize_t netsock_senddata(netsock_t sock, netaddr_t dest, char* data, netsize_t n);
+netresult_size_t netsock_senddata(netsock_t sock, netaddr_t dest, char* data, size_t n);
 /*
  * @brief Read 'n' bytes of data from 'sock' into output
  * @param who Pointer to the source address to fill
  */
-netsize_t netsock_receive(netsock_t sock, char* output, netsize_t n, netaddr_t* who);
+netresult_size_t netsock_receive(netsock_t sock, char* output, size_t n, netaddr_t* who);
 
 #endif  

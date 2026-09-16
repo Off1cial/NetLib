@@ -1,6 +1,7 @@
 #pragma once
 
 #include "net/net.h"
+#include "net/chan.h"
 
 typedef enum {
     CL_FREE = 0,
@@ -34,7 +35,7 @@ typedef struct {
     // Net data
     netaddr_t local_addr;
     netsock_t socket_udp;
-
+    
     // Configurables
     uint32_t tickrate;
 

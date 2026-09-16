@@ -2,6 +2,7 @@
 #define NETCLIENT_H
 
 #include "net/net.h"
+#include "net/chan.h"
 
 typedef enum {
     CON_UNITIALISED = 0,
@@ -14,7 +15,7 @@ typedef enum {
 
 typedef struct {
     netconnstate_t state;
-    netaddr_t remote;
+    netchan_t chan;
     netsock_t socket_udp;
 } netconnection_t;
 

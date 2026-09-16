@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "net/client.h"
+#include "net/net.h"
 
 netclient_t* client = NET_NULL;
 
@@ -12,13 +13,22 @@ netclient_t* client = NET_NULL;
 
 void runfunc(void){
     char data[] = NAME;
-    netsize_t size = netsock_senddata(
+    /*
+    netresult_size_t size = netsock_senddata(
             client->connection.socket_udp, 
-            client->connection.remote,
+            client->connection.chan.remote,
             data, NAMELEN
             );
+    */
+    netresult_size_t size = netchan_send(
+            &client->connection.chan, 
+            client->connection.socket_udp, 
+            NET_PACKET_NETCMD, 
+            data, 
+            NAMELEN);
 
-    printf("Sent %zd\n", size);
+
+    printf("Sent %dB\n", size);
 }
 
 int main(void){
