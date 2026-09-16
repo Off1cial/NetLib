@@ -38,6 +38,6 @@ netclient_t* NetClient_Init(const char* name, size_t namelen);
 
 
 // Forms the connection for communication - unrelated to joining a game server
-netresult_t NetClient_Connect(netclient_t* client, netaddr_t server_addr);
+netresult_t NetClient_ConnectAttempt(netclient_t* client, netaddr_t server_addr);
 void NetClient_Run(netclient_t* client);
 #endif

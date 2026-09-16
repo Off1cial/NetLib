@@ -1,5 +1,6 @@
 #include "net/net.h"
 #include "net/platform/netplatform.h"
+#include "net/readwrite.h"
 #include <errno.h>
 #include <netinet/in.h>
 #ifdef _WIN32
@@ -132,7 +133,8 @@ netresult_size_t netsock_receive(
     netsock_t sock,
     char* output,
     size_t n,
-    netaddr_t* who
+    netaddr_t* who,
+    netpacket_t* outpkt
 ){
     if (NETSOCK_ISNULL(sock))
         return 0;
@@ -160,7 +162,16 @@ netresult_size_t netsock_receive(
     if (who)
         *who = _sockaddr_to_netaddr(from);
 
-    return (size_t)received;
+    netpkthdr_t hdr = {0};
+    size_t pos = 0;
+    hdr = _read_header(output, &pos);
+    
+    outpkt->sequence = hdr.sequence;
+    outpkt->size = hdr.size;
+    outpkt->type = hdr.type;
+    memcpy(outpkt->data, output + pos, received);
+
+    return (netresult_size_t)received;
 }
 
 

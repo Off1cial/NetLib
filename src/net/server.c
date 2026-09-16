@@ -1,4 +1,5 @@
 #include "net/server.h"
+#include "net/chan.h"
 #include "net/net.h"
 #include "common/plt_time.h"
 #include "net/platform/netplatform.h"
@@ -15,14 +16,13 @@ netaddr_t _sockaddr_to_netaddr(struct sockaddr_in addr){
     return (netaddr_t){.port = addr.sin_port, .ip = addr.sin_addr.s_addr};
 }
 
-int _id_clientaddr(netserver_t *server, netaddr_t addr){
+clientid_t _id_clientaddr(netserver_t *server, netaddr_t addr){
     for (u32 i = 0; i < server->client_count; i++){
         if (netaddr_equal(addr, server->clients[i].chan.remote)){
             return i;
         }
-
     }
-    return -1;
+    return CLIENT_UNKNOWN;
 }   
 
 int _extract_netcmd(char* buff, size_t buff_size, netcmd_t* out){
@@ -35,14 +35,14 @@ int _extract_netcmd(char* buff, size_t buff_size, netcmd_t* out){
 }
 
 
-int add_client(netserver_t *server, char* name, netaddr_t addr){
+net_svclient_t* add_client(netserver_t *server, char* name, netaddr_t addr){
     if (server->client_count >= server->client_limit){
-        return 0;
+        return NULL;
     }
     net_svclient_t client = {0};
     client.chan.remote = addr;
     client.chan.state = NETCHAN_CONNECTED;
-    strncpy(client.name, name, NET_MAX_STR);
+    //strncpy(client.name, name, NET_MAX_STR);
     
     u32 id = server->client_count;
     server->clients[id] = client;
@@ -50,8 +50,7 @@ int add_client(netserver_t *server, char* name, netaddr_t addr){
     //server->func_client_init(&server->clients[id]);
     DOFUNC(server->func_client_init, &server->clients[id]);
     server->client_count++;
-
-    return 1;
+    return &server->clients[id];
 }
 
 void remove_client(netserver_t* server, net_svclient_t* client){ 
@@ -66,16 +65,56 @@ void remove_client(netserver_t* server, net_svclient_t* client){
 }
 
 
+
+static void _handle_client_unknown(netserver_t* server, char* name, size_t n, netaddr_t addr){
+    net_svclient_t* client = add_client(server, name, addr);
+
+    if (!client){
+        printf("Failed to add client\n");
+        // Send handshake denial packet
+        return;
+    }
+    // Send acception packet
+    char data[] = "Hello, client!\0";
+    size_t len = strlen(data) + 1;
+    netchan_send(
+        &client->chan, 
+        server->socket_udp, 
+        NET_PACKET_HNDSHK_ACC, 
+        data, len
+    );
+    printf("Client '%s' added\n", name);
+}
+
 static void sv_recv(netserver_t* server){
-
     char buff[NET_MAX_PACKET];
-    netresult_size_t size = 0;
-
-    netaddr_t from;
-
-    size = netsock_receive(server->socket_udp, buff, NET_MAX_PACKET, &from);
-    printf("Received %dB\n", size);
+    for (;;){
+        
+        netaddr_t fromaddr = {0};
+        netpacket_t packet = {0};
+        clientid_t client_id = -1;
     
+        netresult_size_t recvsize = 
+            netsock_receive(server->socket_udp, buff, NET_MAX_PACKET, &fromaddr, &packet);
+        if (recvsize <= 0) break;
+        
+        printf("Received %dB, type %d: ", recvsize, packet.type);
+        // Identify client
+        client_id = _id_clientaddr(server, fromaddr);
+        if (client_id == CLIENT_UNKNOWN){
+            // New client
+            printf("New client\n");
+            if (packet.type == NET_PACKET_HNDSHK_REQ){
+                _handle_client_unknown(server, packet.data, packet.size, fromaddr);
+            }
+            continue;
+        } 
+
+        // Known client
+        printf("Known client\n");
+        continue;
+    }
+
 }
 
 static double accum = 0.0;
@@ -95,18 +134,21 @@ void sv_run(netserver_t *server){
 }
 
 
-int NetServer_Init(netserver_t* server, int client_limit, uint32_t tickrate, u16 port){
-    if (!server) 
-        return NET_SUCCESS;
+netserver_t* NetServer_Init(int client_limit, uint32_t tickrate, u16 port){
+    netserver_t* server = calloc(1, sizeof(netserver_t));
     memset(server, 0, sizeof(netserver_t));
     server->clients = calloc(client_limit, sizeof(net_svclient_t)); 
+    server->client_limit = client_limit;
     server->tickrate = tickrate;
     server->local_addr.port = port;
     server->local_addr.ip = 0;
     server->socket_udp = netsock_create_udp(); 
     if (!netsock_bind(server->socket_udp, server->local_addr)){
         fprintf(stderr, "Failed to bind server socket\n");
-        return NET_FAILURE;
+        netsock_close(server->socket_udp);
+        free(server->clients);
+        free(server);
+        return NULL;
     }
     previous = plt_timemillis();
     char hostname[256];
@@ -115,8 +157,7 @@ int NetServer_Init(netserver_t* server, int client_limit, uint32_t tickrate, u16
     struct hostent* host = gethostbyname(hostname);
     strcpy(hostip, inet_ntoa(*(struct in_addr*)host->h_addr_list[0]));
     printf("[NET]: %dHz Server %s:%d\n", server->tickrate, hostip, port);
-
-    return NET_SUCCESS;
+    return server;
 }
 
 void NetServer_Shutdown(netserver_t* server){

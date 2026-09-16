@@ -3,7 +3,7 @@
 #include "net/net.h"
 
 typedef enum{
-    NETCHAN_DISCONNECTED,
+    NETCHAN_DISCONNECTED = 0,
     NETCHAN_WAITING, // Handshake attempted, waiting for response
     NETCHAN_CONNECTED,
 } netchanstate_t;
@@ -16,12 +16,6 @@ typedef struct {
     u32 ack;        // Sequence number of last acknowledged packet
 } netchan_t; // Net channel?
 
-
-netresult_t netchan_connect(
-        netchan_t* chan,
-        netsock_t sock,
-        netaddr_t destination
-        );
 
 netresult_size_t netchan_send(
         netchan_t* chan, 
@@ -36,3 +30,11 @@ netresult_size_t netchan_recv(
         void* buff, 
         size_t buffsize, 
         netpacket_t* pkt);
+
+netresult_t netchan_connect(
+        netchan_t* chan,
+        netsock_t sock,
+        void* intro_data,
+        size_t datasize,
+        netaddr_t destination);
+

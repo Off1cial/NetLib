@@ -19,7 +19,8 @@ uint64_t plt_timemicros(void)
                     frequency.QuadPart);
 }
 
-#elif defined(__linux__)
+//#elif defined(__linux__)
+#else
 #include <time.h>
 
 uint64_t plt_timemicros(void)
@@ -31,10 +32,6 @@ uint64_t plt_timemicros(void)
   return (uint64_t)ts.tv_sec * 1000000ULL +
          (uint64_t)ts.tv_nsec / 1000ULL;
 }
-
-#else
-
-#error "Unsupported platform"
 
 #endif
 

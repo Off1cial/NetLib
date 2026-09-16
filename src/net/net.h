@@ -8,8 +8,12 @@
 #define NET_MAX_STR 256
 
 typedef u16 netpacktype_t;
-#define NET_PACKET_NETCMD 1
-#define NET_PACKET_NETSNAPSHOT 2
+
+#define NET_PACKET_HNDSHK_REQ 1
+#define NET_PACKET_HNDSHK_ACC 2
+#define NET_PACKET_HNDSHK_DEN 3
+#define NET_PACKET_NETCMD 4
+#define NET_PACKET_NETSNAPSHOT 5
 
 typedef i16 netresult_size_t;
 typedef u16 netlen_t;
@@ -24,7 +28,7 @@ typedef u16 netlen_t;
 
 // Tells a client/server - "Receiving a set of data, the interesting section is of size 'netsize_t size'
 
-#define NETERROR_WRONGPEER -1
+#define NETERROR_UNKNOWNPEER -1
 #define NETERROR_INVALIDSIZE -2
 #define NETERROR_NULLDATA -3
 #define NETERROR_INVALIDSOCKET -4
@@ -37,11 +41,13 @@ typedef struct {
     netpacktype_t type;
 }netpkthdr_t;
 
+// Used on receiving end
 typedef struct {
     netpacktype_t type;
     u32 sequence;
 
-    const void* data;
+    //void* data;
+    char data[NET_MAX_PACKET];
     netlen_t size;
 } netpacket_t;
 
@@ -94,6 +100,6 @@ netresult_size_t netsock_senddata(netsock_t sock, netaddr_t dest, char* data, si
  * @brief Read 'n' bytes of data from 'sock' into output
  * @param who Pointer to the source address to fill
  */
-netresult_size_t netsock_receive(netsock_t sock, char* output, size_t n, netaddr_t* who);
+netresult_size_t netsock_receive(netsock_t sock, char* output, size_t n, netaddr_t* who, netpacket_t* outpkt);
 
 #endif  

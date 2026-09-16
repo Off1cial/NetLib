@@ -1,78 +1,10 @@
 #include "net/chan.h"
 #include "net/net.h"
+#include "net/readwrite.h"
 #include "net/platform/netplatform.h"
 #include <string.h>
-// Dereference increment
-#define DEREFINC(p) (*p)++
+#include <stdio.h>
 
-#define _WRITE_INT(buff, pos, value) \
-    _write_intgeneric(buff, pos, (uintmax_t)(value), sizeof(value))
-
-//#define HDRSIZE sizeof(netpkthdr_t)
-
-
-// Change with netpkthdr_t, this is to avoid struct padding
-#define NETPKT_HDR_SIZE (sizeof(u32) + sizeof(netlen_t) + sizeof(netpacktype_t))
-// Read little endian
-static inline u32 _read_u32(const char* buff, size_t* pos)
-{
-    u32 value = 0;
-
-    value |= (u32)(u8)buff[DEREFINC(pos)] << 24;
-    value |= (u32)(u8)buff[DEREFINC(pos)] << 16;
-    value |= (u32)(u8)buff[DEREFINC(pos)] << 8;
-    value |= (u32)(u8)buff[DEREFINC(pos)];
-
-    return value;
-}
-
-
-static inline u32 _read_u16(char* buff, size_t* pos){
-    u16 val = 0;
-
-    val |=  (buff[DEREFINC(pos)] << 8);
-    val |=  (buff[DEREFINC(pos)]);
-    return val;
-}
-// Writes in big endian
-/*
-    u32 u = 0x12345678;
-    buff[pos++] = u >> 24; // 0x12
-    buff[pos++] = u >> 16; // 0x34
-    buff[pos++] = u >> 8;  // 0x56
-    buff[pos++] = u;       // 0x78
- */
-static inline void _write_u32(char* buff, size_t* pos, u32 value){
-    buff[DEREFINC(pos)] = value >> 24;
-    buff[DEREFINC(pos)] = value >> 16;
-    buff[DEREFINC(pos)] = value >> 8;
-    buff[DEREFINC(pos)] = value;
-}
-
-static inline void _write_u16(char* buff, size_t* pos, u16 value){
-    buff[DEREFINC(pos)] = value >> 16;
-    buff[DEREFINC(pos)] = value;
-}
-
-
-
-// Big endian write
-static inline void _write_intgeneric(
-    char* buff,
-    size_t* pos,
-    uintmax_t value,
-    size_t bytes)
-{
-    for (size_t i = 0; i < bytes; i++)
-        buff[DEREFINC(pos)] =
-            (value >> (8 * (bytes - 1 - i))) & 0xff;
-}
-
-static inline void _write_header(char* buff, size_t* pos, const netpkthdr_t* header){
-    _WRITE_INT(buff, pos, header->sequence);
-    _WRITE_INT(buff, pos, header->size);
-    _WRITE_INT(buff, pos, header->type);
-}
 
 netresult_size_t netchan_send(
         netchan_t* chan, 
@@ -111,8 +43,16 @@ netresult_size_t netchan_recv(
     
    netaddr_t from;
 
-   size_t recsize = netsock_receive(sock, buff, buffsize, &from);
-   if (!netaddr_equal(from, chan->remote)) return NETERROR_WRONGPEER;
+   size_t recsize = netsock_receive(sock, buff, buffsize, &from, pkt);
+   if (!netaddr_equal(from, chan->remote)) return NETERROR_UNKNOWNPEER;
+
+   /* Performed by netsock_receive()
+    size_t pos = 0;
+    netpkthdr_t hdr = _read_header(buff, &pos);
+    pkt->type = hdr.type;
+    pkt->size = hdr.size;
+    pkt->sequence = hdr.sequence;
+   */
 
    return recsize;
 }
@@ -120,20 +60,31 @@ netresult_size_t netchan_recv(
 netresult_t netchan_connect(
         netchan_t* chan,
         netsock_t sock,
+        void* intro_data,
+        size_t datasize,
         netaddr_t destination
         )
 {
     if (!chan) return NETERROR_NULLDATA;    
     if (sock == NETSOCK_INVALID) return NETERROR_INVALIDSOCKET;
 
-    netresult_t res = netsock_connect(sock, destination);
-    if (!res) return NET_FAILURE;
-
-    chan->state = NETCHAN_CONNECTED;
+    //netresult_t res = netsock_connect(sock, destination);
+    //if (!res) return NET_FAILURE;
     chan->remote = destination;
-    chan->out_sequence = 0;
-    chan->in_sequence = 0;
     chan->ack = 0;
-    return res;
+    chan->in_sequence = 0;
+    netresult_size_t rs = netchan_send(
+            chan, 
+            sock, 
+            NET_PACKET_HNDSHK_REQ, 
+            intro_data, 
+            datasize);
+    if (rs <= 0){
+        chan->state = NETCHAN_DISCONNECTED;
+        return NET_FAILURE;
+    }
+    printf("Sent handshake (%dB), waiting..\n", rs);
+    chan->state = NETCHAN_WAITING;
+    return NET_SUCCESS;
 }
 

@@ -3,6 +3,9 @@
 #include "net/net.h"
 #include "net/chan.h"
 
+#define CLIENT_UNKNOWN -1
+typedef i32 clientid_t;
+
 typedef enum {
     CL_FREE = 0,
     CL_ZOMBIE,
@@ -41,7 +44,7 @@ typedef struct {
 
 } netserver_t;
 
-int NetServer_Init(netserver_t* server, int client_limit, uint32_t tickrate, uint16_t port);
+netserver_t* NetServer_Init(int client_limit, uint32_t tickrate, uint16_t port);
 void NetServer_Shutdown(netserver_t* server);
 void NetServer_Run(netserver_t* server);
 
