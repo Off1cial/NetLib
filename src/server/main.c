@@ -12,7 +12,7 @@ void is_running(void){
     printf("Is running\n");
 }
 
-void shutdown(void){
+void sv_shutdown(void){
     printf("Goodbye\n");
 }
 
@@ -23,7 +23,7 @@ int main(void){
         exit(1);
     }
     //server.func_run = &is_running;
-    server->func_shutdown = &shutdown;
+    server->func_shutdown = &sv_shutdown;
 
     while(1){
         NetServer_Run(server);

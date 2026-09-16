@@ -33,15 +33,10 @@ int main(void){
 
     client = NetClient_Init(NAME, NAMELEN);
     client->func_run = &runfunc;
-    client->update_rate = 1;
+    client->update_rate = 2;
 
-    if (!NetClient_ConnectAttempt(client, netaddr_new(SERVER_IP, SERVER_PORT))){
-        printf("Failed to connect\n");
-        exit(1);
-    }else{
-        printf("Attempting connection to %s:%d...\n", SERVER_IP, SERVER_PORT);
-    }
-    
+    NetClient_ConnectServer(client, netaddr_new(SERVER_IP, SERVER_PORT));
+
     while(1){
         NetClient_Run(client);
     }

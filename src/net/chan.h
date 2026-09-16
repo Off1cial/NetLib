@@ -2,7 +2,7 @@
 
 #include "net/net.h"
 
-typedef enum{
+typedef enum{ // Preserve this order
     NETCHAN_DISCONNECTED = 0,
     NETCHAN_WAITING, // Handshake attempted, waiting for response
     NETCHAN_CONNECTED,

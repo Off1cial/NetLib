@@ -83,7 +83,7 @@ netresult_t netchan_connect(
         chan->state = NETCHAN_DISCONNECTED;
         return NET_FAILURE;
     }
-    printf("Sent handshake (%dB), waiting..\n", rs);
+    //printf("Sent handshake (%dB), waiting..\n", rs);
     chan->state = NETCHAN_WAITING;
     return NET_SUCCESS;
 }

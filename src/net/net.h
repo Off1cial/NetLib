@@ -3,6 +3,9 @@
 
 #include "common/common.h"
 #include "net/platform/netplatform.h"
+#include <arpa/inet.h>
+#include <string.h>
+#include <stdio.h>
 
 #define NET_MAX_PACKET 512
 #define NET_MAX_STR 256
@@ -74,6 +77,13 @@ typedef struct netsnapshot_t{
 
 static inline bool netaddr_equal(netaddr_t a, netaddr_t b){
     return (a.ip == b.ip) && (a.port == b.port);
+}
+
+static inline const char* netaddr_to_string(netaddr_t addr, char* buff, size_t buffn){
+    struct in_addr ia;
+    ia.s_addr = htonl(addr.ip);
+    snprintf(buff, buffn, "%s:%u", inet_ntoa(ia), addr.port);
+    return buff;
 }
 
 netaddr_t netaddr_new(char* ip, u16 port);
