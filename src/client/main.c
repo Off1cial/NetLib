@@ -12,6 +12,8 @@ netclient_t* client = NET_NULL;
 #define SERVER_IP "192.168.1.161" // Just so happens?
 
 void runfunc(void){
+    if (client->connection.chan.state != NETCHAN_CONNECTED)
+        return;
     char data[] = NAME;
     /*
     netresult_size_t size = netsock_senddata(
@@ -28,7 +30,8 @@ void runfunc(void){
             NAMELEN);
 
 
-    printf("Sent %dB\n", size);
+
+    printf("%d: Sent %dB\n", client->connection.chan.out_sequence, size);
 }
 
 int main(void){

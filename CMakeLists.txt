@@ -37,7 +37,7 @@ target_include_directories(net PUBLIC
 
 file(GLOB_RECURSE CLIENT_SOURCES
     src/client/*.c
-    ${SHARED_SOURCES}
+    #${SHARED_SOURCES}
 )
 
 add_executable(client
@@ -63,7 +63,7 @@ file(GLOB_RECURSE SERVER_SOURCES
 
 add_executable(server
     ${SERVER_SOURCES}
-    ${SHARED_SOURCES}
+    #${SHARED_SOURCES}
 )
 
 target_include_directories(server PRIVATE

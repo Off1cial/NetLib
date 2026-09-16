@@ -29,6 +29,8 @@ typedef u16 netlen_t;
 #define NETERROR_NULLDATA -3
 #define NETERROR_INVALIDSOCKET -4
 
+#define NETPORT_ANY 0
+
 typedef struct {
     u32 sequence;
     netlen_t size; // size of corresponding data in the buffer

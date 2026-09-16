@@ -1,5 +1,6 @@
 #include "net/net.h"
 #include "net/platform/netplatform.h"
+#include <errno.h>
 #include <netinet/in.h>
 #ifdef _WIN32
 #include <winsock2.h>
@@ -84,10 +85,12 @@ netresult_t netsock_connect(netsock_t sock, netaddr_t addr){
 #ifdef _WIN32
     return NET_FAILURE;
 #else
+    /*
     struct sockaddr_in in = _netaddr_to_sockaddr(addr);
     int res = connect(sock, (struct sockaddr*)&in, sizeof(in));
     if (res < 0)
         return NET_FAILURE;
+    */
     return NET_SUCCESS;
 #endif
 }
@@ -146,8 +149,13 @@ netresult_size_t netsock_receive(
         &fromlen
     );
 
-    if (received < 0)
-        return 0;
+    if (received < 0){
+        if (errno == EAGAIN || errno == EWOULDBLOCK){
+            return 0;
+        }
+        perror("Recvfrom");
+        return -1;
+    }
 
     if (who)
         *who = _sockaddr_to_netaddr(from);

@@ -8,23 +8,30 @@
 #define _WRITE_INT(buff, pos, value) \
     _write_intgeneric(buff, pos, (uintmax_t)(value), sizeof(value))
 
-#define HDRSIZE sizeof(netpkthdr_t)
+//#define HDRSIZE sizeof(netpkthdr_t)
 
+
+// Change with netpkthdr_t, this is to avoid struct padding
+#define NETPKT_HDR_SIZE (sizeof(u32) + sizeof(netlen_t) + sizeof(netpacktype_t))
 // Read little endian
-static inline u32 _read_u32(char* buff, size_t* pos){
-    u32 value = (
-            (buff[DEREFINC(pos)] << 24) |
-            (buff[DEREFINC(pos)] << 16) |
-            (buff[DEREFINC(pos)] << 8)  |
-            (buff[DEREFINC(pos)])
-            );
+static inline u32 _read_u32(const char* buff, size_t* pos)
+{
+    u32 value = 0;
+
+    value |= (u32)(u8)buff[DEREFINC(pos)] << 24;
+    value |= (u32)(u8)buff[DEREFINC(pos)] << 16;
+    value |= (u32)(u8)buff[DEREFINC(pos)] << 8;
+    value |= (u32)(u8)buff[DEREFINC(pos)];
+
     return value;
 }
 
+
 static inline u32 _read_u16(char* buff, size_t* pos){
-    u16 val = 
-        (buff[DEREFINC(pos)] << 16) |
-        (buff[DEREFINC(pos)]);
+    u16 val = 0;
+
+    val |=  (buff[DEREFINC(pos)] << 8);
+    val |=  (buff[DEREFINC(pos)]);
     return val;
 }
 // Writes in big endian
@@ -83,7 +90,7 @@ netresult_size_t netchan_send(
         .sequence = chan->out_sequence++
     };
     
-    size_t buffsize = HDRSIZE + size;
+    size_t buffsize = NETPKT_HDR_SIZE + size;
     char buff[buffsize]; 
     size_t pos = 0;
     _write_header(buff, &pos, &header);

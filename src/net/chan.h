@@ -4,6 +4,7 @@
 
 typedef enum{
     NETCHAN_DISCONNECTED,
+    NETCHAN_WAITING, // Handshake attempted, waiting for response
     NETCHAN_CONNECTED,
 } netchanstate_t;
 
