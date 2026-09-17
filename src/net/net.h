@@ -127,6 +127,11 @@ static inline netaddr_t netaddr_newany(u16 port){
     return (netaddr_t){.ip = INADDR_ANY, .port = port};
 }
 
+static inline netaddr_t netaddr_newmulticast(u16 port){
+    return netaddr_new("239.255.42.99", port); // any address in 239.0.0.0/8 (site-local) works
+}
+
+
 static inline bool netaddr_equal(netaddr_t a, netaddr_t b){
     return (a.ip == b.ip) && (a.port == b.port);
 }
@@ -155,9 +160,10 @@ void netsock_close(netsock_t sock);
 netresult_t netsock_bind(netsock_t sock, netaddr_t addr);
 
 netresult_t netsock_setopt(netsock_t sock, netsockopt_t opt, bool state);
-// For use on clients
-netresult_t netsock_connect(netsock_t sock, netaddr_t addr);
 
+//netresult_t netsock_connect(netsock_t sock, netaddr_t addr);
+
+netresult_t netsock_joinmulticast(netsock_t sock, netaddr_t group, netaddr_t iface);
 
 /**
  *

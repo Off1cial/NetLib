@@ -198,13 +198,15 @@ netserver_t* NetServer_Init(int client_limit, uint32_t tickrate, u16 port, u16 b
     server->client_limit = client_limit;
     server->tickrate = tickrate;
     server->local_addr = netaddr_new("192.168.1.161", port);
-    //server->broadcast_addr =  netaddr_newbroadcast(broadcast_port);
-    server->broadcast_addr = netaddr_new("0.0.0.0", broadcast_port);
+    server->broadcast_addr =  netaddr_newmulticast(broadcast_port);
+    //server->broadcast_addr = netaddr_new("0.0.0.0", broadcast_port);
     server->socket_udp = netsock_create_udp(); 
     server->socket_broadcast = netsock_create_udp();
     server->broadcast_interval = 4.0f;
+    /* ONLY USED WITHOUT MUTLICAST
     netsock_setopt(server->socket_broadcast, NETSOCKOPT_BROADCAST, true);
     netsock_setopt(server->socket_broadcast, NETSOCKOPT_REUSEADDR, true);
+    */ 
     if (!netsock_bind(server->socket_udp, server->local_addr)){
         fprintf(stderr, "Failed to bind server socket\n");
         netsock_close(server->socket_udp);

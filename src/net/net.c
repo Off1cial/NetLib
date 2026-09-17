@@ -1,16 +1,19 @@
 #include "net/net.h"
 #include "net/platform/netplatform.h"
 #include "net/readwrite.h"
-#include <errno.h>
-#include <netinet/in.h>
+
 #ifdef _WIN32
 #include <winsock2.h>
+
 #else
+#include <arpa/inet.h>
+#include <sys/types.h>
+#include <errno.h>
+#include <netinet/in.h>
 #include <sys/socket.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
-#include <arpa/inet.h>
 #endif
 
 
@@ -66,7 +69,7 @@ netresult_t netsock_bind(netsock_t sock, netaddr_t addr){
     struct sockaddr_in in = _netaddr_to_sockaddr(addr);
     int res = bind(sock, (struct sockaddr*)&in, sizeof(in));
     if (res < 0){
-        printf("errno: %d\n", res);
+        PERROR();
         return NET_FAILURE;
     }
     return NET_SUCCESS;
@@ -75,20 +78,35 @@ netresult_t netsock_bind(netsock_t sock, netaddr_t addr){
 
 
 
+/*
 // For use on clients
 netresult_t netsock_connect(netsock_t sock, netaddr_t addr){
 #ifdef _WIN32
     return NET_FAILURE;
 #else
-    /*
     struct sockaddr_in in = _netaddr_to_sockaddr(addr);
     int res = connect(sock, (struct sockaddr*)&in, sizeof(in));
     if (res < 0)
         return NET_FAILURE;
-    */
     return NET_SUCCESS;
 #endif
 }
+*/
+
+netresult_t netsock_joinmulticast(netsock_t sock, netaddr_t group, netaddr_t iface){
+    struct ip_mreq mreq;
+    mreq.imr_multiaddr.s_addr = htonl(group.ip);
+    mreq.imr_interface.s_addr = htonl(iface.ip); // INADDR_ANY = let OS pick
+
+    int res = setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
+    if (res != 0){
+        perror("IP_ADD_MEMBERSHIP");
+        return NET_FAILURE;
+    }
+    return NET_SUCCESS;
+}
+
+
 
 netresult_size_t netsock_senddata(netsock_t sock, netaddr_t dest, char* data, size_t n){
     if (NETSOCK_ISNULL(sock)){
@@ -176,9 +194,11 @@ netresult_size_t netsock_receive(
 
 netresult_t netsock_setopt(netsock_t sock, netsockopt_t opt, bool state){
     if (sock == NETSOCK_INVALID) return NET_FAILURE; 
-     
+    
+    int val = state ? 1 : 0;
+
     if (opt < NETSOCKOPT_MULTICASTDUMMY){
-        int res = setsockopt(sock, SOL_SOCKET, opt, &state, sizeof(sock));
+        int res = setsockopt(sock, SOL_SOCKET, opt, &val, sizeof(val));
         if (res != 0) {
             PERROR();
             return NET_FAILURE;
@@ -186,7 +206,7 @@ netresult_t netsock_setopt(netsock_t sock, netsockopt_t opt, bool state){
         return NET_SUCCESS;
     }
 
-    int res = setsockopt(sock, IPPROTO_IP, opt, &state, sizeof(sock));
+    int res = setsockopt(sock, IPPROTO_IP, opt, &val, sizeof(val));
     if (res != 0){
         PERROR();
         return NET_FAILURE;

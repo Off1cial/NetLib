@@ -4,11 +4,12 @@ project(netproto C)
 
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS OFF)
+set(CMAKE_C_EXTENSIONS ON) # Changed from 'OFF' 17/09/26 17:50 for struct ip_mreq
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_compile_definitions(_POSIX_C_SOURCE=200809L)
+add_compile_definitions(_GNU_SOURCE) # Added 17/09/26 17:50 for struct ip_mreq 
 # --------------------------------------------------
 # Shared netcode
 # --------------------------------------------------

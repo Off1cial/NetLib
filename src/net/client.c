@@ -32,11 +32,16 @@ netclient_t* NetClient_Init(const char* name, size_t namelen, u16 broadcast_port
     netsock_setopt(client->socket_broadcast, NETSOCKOPT_BROADCAST, true);
     netsock_setopt(client->socket_broadcast, NETSOCKOPT_REUSEADDR, true);
     netaddr_t broadcast_addr = netaddr_newany(broadcast_port);
+    netaddr_t group = netaddr_newmulticast(broadcast_port);
     if (!netsock_bind(client->socket_broadcast, broadcast_addr)){
         netsock_close(client->connection.socket_udp);
         netsock_close(client->socket_broadcast);
         free(client);
         return NET_NULL;
+    }
+    if (!netsock_joinmulticast(client->socket_broadcast, group, netaddr_newany(0))){
+        printf("Failed to join multicast group\n");
+        return NET_FAILURE;
     }
 
     char hostname[256];
