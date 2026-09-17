@@ -7,5 +7,8 @@
     X Add UDP handshake for joining servers
     : Server shutdown broadcast packets
     : Client no response timeouts
-    : MUST FIX - Client fails to leave the 'waiting state' after receiving broadcast
+17/09/26 15:42
+    : FIXED - Client fails to leave the 'waiting state' after receiving broadcast
+    : Make the client send a handshake ack before joining the server,
+        The server checks for its arrival before allocing the space and allowing the join
 
