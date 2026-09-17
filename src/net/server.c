@@ -61,6 +61,7 @@ void remove_client(netserver_t* server, net_svclient_t* client){
     //server->func_client_remove(client);
     DOFUNC(server->func_client_remove, client);
     memset(client, 0, sizeof(net_svclient_t));
+    client->state = CL_FREE;
     server->client_count--;
 
 }
@@ -85,14 +86,28 @@ static void _send_hndshk_denial(netserver_t* server, netaddr_t addr){
             );
 }
 
-void _add_client(netserver_t* server, net_svclient_t* client, char* name, size_t namelen, netaddr_t addr){
+
+void _add_client(
+    netserver_t* server,
+    net_svclient_t* client,
+    char* name,
+    size_t namelen,
+    netaddr_t addr)
+{
     client->state = CL_CONNECTED;
     client->chan.state = NETCHAN_CONNECTED;
     client->chan.remote = addr;
     client->ticks_elapsed = 0;
-    strncpy(client->name, name, namelen);
+
+    size_t len = namelen;
+    if (len >= sizeof(client->name))
+        len = sizeof(client->name) - 1;
+
+    memcpy(client->name, name, len);
+    client->name[len] = '\0';
+
     DOFUNC(server->func_client_init, client);
-    server->clients[server->client_count++] = *client;
+    server->client_count++;
 }
 
 static void _handle_client_unknown(netserver_t* server, char* name, size_t n, netaddr_t addr){
@@ -185,7 +200,7 @@ netresult_size_t NetServer_Broadcast(netserver_t* server, void* data, size_t dat
     };
     size_t pos = 0;
     _write_header(buff, &pos, &header);
-    _write_netaddr(buff, &pos, server->local_addr);
+    _write_netaddr(buff, &pos, server->net_addr);
     memcpy(buff + pos, data,  datalen);
     return netsock_senddata(server->socket_broadcast,server->broadcast_addr, buff, buffsize);
 }
@@ -197,8 +212,9 @@ netserver_t* NetServer_Init(int client_limit, uint32_t tickrate, u16 port, u16 b
     server->clients = calloc(client_limit, sizeof(net_svclient_t)); 
     server->client_limit = client_limit;
     server->tickrate = tickrate;
-    server->local_addr = netaddr_new("192.168.1.161", port);
+    //server->local_addr = netaddr_new("192.168.1.161", port);
     server->broadcast_addr =  netaddr_newmulticast(broadcast_port);
+    server->net_addr = netaddr_getnet(port);
     //server->broadcast_addr = netaddr_new("0.0.0.0", broadcast_port);
     server->socket_udp = netsock_create_udp(); 
     server->socket_broadcast = netsock_create_udp();
@@ -207,7 +223,7 @@ netserver_t* NetServer_Init(int client_limit, uint32_t tickrate, u16 port, u16 b
     netsock_setopt(server->socket_broadcast, NETSOCKOPT_BROADCAST, true);
     netsock_setopt(server->socket_broadcast, NETSOCKOPT_REUSEADDR, true);
     */ 
-    if (!netsock_bind(server->socket_udp, server->local_addr)){
+    if (!netsock_bind(server->socket_udp, netaddr_newany(port))){
         fprintf(stderr, "Failed to bind server socket\n");
         netsock_close(server->socket_udp);
         netsock_close(server->socket_broadcast);
@@ -230,7 +246,7 @@ netserver_t* NetServer_Init(int client_limit, uint32_t tickrate, u16 port, u16 b
     previous_tick = plt_timemillis();
     previous_broadcast = previous_tick;
     char hostip[256], broadcastip[256];
-    netaddr_to_string(server->local_addr, hostip, 256);
+    netaddr_to_string(server->net_addr, hostip, 256);
     netaddr_to_string(server->broadcast_addr, broadcastip, 256);
 
 

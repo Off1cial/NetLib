@@ -37,7 +37,7 @@ typedef struct {
     void (*func_shutdown)(void);
 
     // Net data
-    netaddr_t local_addr;
+    netaddr_t net_addr;
     netaddr_t broadcast_addr;
     netsock_t socket_udp;
     netsock_t socket_broadcast;

@@ -213,3 +213,40 @@ netresult_t netsock_setopt(netsock_t sock, netsockopt_t opt, bool state){
     }
     return NET_SUCCESS;
 }
+
+
+netaddr_t netaddr_getnet(u16 port)
+{
+    int sock = socket(AF_INET, SOCK_DGRAM, 0);
+
+    struct sockaddr_in remote = {
+        .sin_family = AF_INET,
+        .sin_port = htons(9),
+        .sin_addr.s_addr = 0
+    };
+
+    inet_pton(AF_INET, "1.1.1.1", &remote.sin_addr);
+    int con = connect(sock, (struct sockaddr*)&remote, sizeof(remote));
+
+    if (con < 0){
+        printf("failed con\n");
+        return netaddr_newany(port);
+    }
+    struct sockaddr_in local;
+    socklen_t len = sizeof(local);
+
+    getsockname(
+        sock,
+        (struct sockaddr*)&local,
+        &len
+    );
+
+    netsock_close(sock);
+
+    return (netaddr_t){
+        .ip = ntohl(local.sin_addr.s_addr),
+        .port = port,
+    };
+}
+
+

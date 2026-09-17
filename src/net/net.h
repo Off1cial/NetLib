@@ -187,4 +187,10 @@ netresult_size_t netsock_sendpacket(
         size_t n, 
         netpacktype_t type);
 
-#endif  
+
+// Misc
+
+
+netaddr_t netaddr_getnet(u16 port);
+
+#endif
