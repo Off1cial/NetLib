@@ -76,6 +76,18 @@ typedef struct netsnapshot_t{
     u32 ack;
 } netsnapshot_t;
 
+static inline netaddr_t netaddr_new(char* ip, u16 port){
+    netaddr_t addr = {0};
+    //inet_pton(AF_INET, ip, &addr.ip);
+    //addr.ip = ntohl(addr.ip);
+    addr.ip = ntohl(inet_addr(ip));
+    addr.port = port;
+    return addr;
+}
+
+static inline netaddr_t netaddr_newany(u16 port){
+    return (netaddr_t){.ip = INADDR_ANY, .port = port};
+}
 
 static inline bool netaddr_equal(netaddr_t a, netaddr_t b){
     return (a.ip == b.ip) && (a.port == b.port);

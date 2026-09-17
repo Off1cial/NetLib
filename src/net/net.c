@@ -13,16 +13,12 @@
 #include <arpa/inet.h>
 #endif
 
+#ifndef SO_REUSEPORT
+#define SO_REUSEPORT 15
+#endif
+
 #define ADDRCAST(sockaddrin) (struct sockaddr*)&sockaddrin
 
-netaddr_t netaddr_new(char* ip, u16 port){
-    netaddr_t addr = {0};
-    //inet_pton(AF_INET, ip, &addr.ip);
-    //addr.ip = ntohl(addr.ip);
-    addr.ip = ntohl(inet_addr(ip));
-    addr.port = port;
-    return addr;
-}
 
 
 static inline 
@@ -72,8 +68,10 @@ netresult_t netsock_bind(netsock_t sock, netaddr_t addr){
 #else
     struct sockaddr_in in = _netaddr_to_sockaddr(addr);
     int res = bind(sock, (struct sockaddr*)&in, sizeof(in));
-    if (res < 0) 
+    if (res < 0){
+        printf("errno: %d\n", res);
         return NET_FAILURE;
+    }
     return NET_SUCCESS;
 #endif
 }
@@ -87,6 +85,9 @@ netresult_t netsock_set_broadcast(netsock_t sock)
     }
 
     if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&enable, sizeof(enable)) != 0) {
+        return NET_FAILURE;
+    }
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, (const char*)&enable, sizeof(enable)) != 0) {
         return NET_FAILURE;
     }
     return NET_SUCCESS;

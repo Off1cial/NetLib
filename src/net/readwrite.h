@@ -91,7 +91,7 @@ static inline void _write_header(char* buff, size_t* pos, const netpkthdr_t* hea
 static inline netpkthdr_t _read_header(char* buff, size_t* pos){
     netpkthdr_t header = {0};
     header.sequence = (typeof(header.sequence))_read_intgeneric(buff, pos, sizeof(header.sequence));
-    header.size = (typeof(header.sequence))_read_intgeneric(buff, pos, sizeof(header.size));
+    header.size = (typeof(header.size))_read_intgeneric(buff, pos, sizeof(header.size));
     header.type = (typeof(header.type))_read_intgeneric(buff, pos, sizeof(header.type));
     return header;
 }
@@ -105,7 +105,6 @@ static inline void _write_netaddr(char* buff, size_t* pos, netaddr_t addr){
 static inline netaddr_t _read_netaddr(char* buff, size_t* pos){
     netaddr_t addr = {0};
     addr.ip = TYPEMATCH(addr.ip, _read_intgeneric(buff, pos, sizeof(addr.ip)));
-
-    addr.port = 27015; 
+    addr.port = TYPEMATCH(addr.port, _read_intgeneric(buff, pos, sizeof(addr.port)));
     return addr;
 }

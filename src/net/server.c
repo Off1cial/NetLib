@@ -193,7 +193,7 @@ netserver_t* NetServer_Init(int client_limit, uint32_t tickrate, u16 port, u16 b
     server->tickrate = tickrate;
     server->local_addr = netaddr_new("192.168.1.161", port);
     //server->broadcast_addr =  netaddr_newbroadcast(broadcast_port);
-    server->broadcast_addr = netaddr_new("255.255.255.255", broadcast_port);
+    server->broadcast_addr = netaddr_new("0.0.0.0", broadcast_port);
     server->socket_udp = netsock_create_udp(); 
     server->socket_broadcast = netsock_create_udp();
     netsock_set_broadcast(server->socket_broadcast);
@@ -233,7 +233,8 @@ void NetServer_Shutdown(netserver_t* server){
     DOFUNC(server->func_shutdown);
     free(server->clients);
     netsock_close(server->socket_udp);
-memset(server, 0, sizeof(netserver_t));
+    memset(server, 0, sizeof(netserver_t));
+    free(server);
 }
 
 void NetServer_Run(netserver_t* server){

@@ -5,8 +5,12 @@
 #include "common/plt_time.h"
 #include "net/readwrite.h"
 #include <stdio.h>
+#include <unistd.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include <netdb.h>
+#include <netinet/in.h>
+
 
 // Timing variables for consistent update rate
 static double accum = 0.0;
@@ -26,7 +30,7 @@ netclient_t* NetClient_Init(const char* name, size_t namelen, u16 broadcast_port
     client->connection.socket_udp = netsock_create_udp();
     client->socket_broadcast = netsock_create_udp();
     netsock_set_broadcast(client->socket_broadcast);
-    netaddr_t broadcast_addr = netaddr_new("0.0.0.0", broadcast_port);
+    netaddr_t broadcast_addr = netaddr_newany(broadcast_port);
     if (!netsock_bind(client->socket_broadcast, broadcast_addr)){
         netsock_close(client->connection.socket_udp);
         netsock_close(client->socket_broadcast);
@@ -34,8 +38,18 @@ netclient_t* NetClient_Init(const char* name, size_t namelen, u16 broadcast_port
         return NET_NULL;
     }
 
+    char hostname[256];
+    char hostip[256];
+
+    gethostname(hostname, 256);
+    struct hostent *host = gethostbyname(hostname);
+    strcpy(hostip, inet_ntoa(*(struct in_addr*)host->h_addr_list[0]));
+    printf("Client %s ip: %s\n",hostname, hostip);
+
     previous = plt_timemillis();
     client->cstate = NETC_STATE_IDLE;
+    
+
     return client;
 }
 
@@ -94,7 +108,6 @@ void NetClient_ConnectServer(netclient_t* client, netaddr_t server_addr){
     client->attempt_lasttime = 0.0;
     client->attempts_made = 0;
     client->connection.chan.remote = server_addr;
-    printf("Set\n");
     client->cstate = NETC_STATE_ATTEMPTING;
     client->connection.chan.state = NETCHAN_WAITING;
 }
@@ -151,13 +164,13 @@ static void cl_recv_broadcast(netclient_t* client){
                     NET_MAX_PACKET, &from, &brdcst);
         if (recvsize <= 0) break;
         if (brdcst.type != NET_PACKET_BROADCAST) continue;    
-        char ipstring[256];
-        netaddr_t server_addr = {0};
         size_t pos = 0;
-        server_addr = _read_netaddr(buff, &pos);
-        printf("Broadcast received (%dB):\n\t%s\n",recvsize, netaddr_to_string(from, ipstring, 256)); 
-        
+        netpkthdr_t hdr = _read_header(buff, &pos);
+        netaddr_t server_addr = _read_netaddr(buff, &pos);
 
+        char ipstring[256];
+        printf("Broadcast received (%dB):\n\t%s\n",recvsize, netaddr_to_string(server_addr, ipstring, 256)); 
+        NetClient_ConnectServer(client, server_addr);
     }
 }
 
