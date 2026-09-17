@@ -17,8 +17,9 @@
 
 netaddr_t netaddr_new(char* ip, u16 port){
     netaddr_t addr = {0};
-    inet_pton(AF_INET, ip, &addr.ip);
-    addr.ip = ntohl(addr.ip);
+    //inet_pton(AF_INET, ip, &addr.ip);
+    //addr.ip = ntohl(addr.ip);
+    addr.ip = ntohl(inet_addr(ip));
     addr.port = port;
     return addr;
 }
@@ -142,25 +143,6 @@ netresult_size_t netsock_sendpacket(
             sizeof(saddr));
     return (netresult_size_t)sent;
 }
-
-/*
-netsize_t netsock_receive(netsock_t sock, char* output, netsize_t n, netaddr_t* who){
-    if (NETSOCK_ISNULL(sock)){
-        return 0;
-    }
-    struct sockaddr_in from;
-    socklen_t fromlen = sizeof(from);
-
-    netsize_t in_size = 0;
-    char buff[n];
-    while ((in_size = recvfrom(sock, buff, n, MSG_DONTWAIT, ADDRCAST(from), &fromlen)) > 0){
-       // What do i do here?  
-    }
-    memcpy(output, buff, n);
-    return in_size;
-    *who = _sockaddr_to_netaddr(from);
-}
-*/
 
 
 netresult_size_t netsock_receive(

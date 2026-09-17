@@ -95,7 +95,7 @@ static inline const char* netaddr_to_string(netaddr_t addr, char* buff, size_t b
 netaddr_t netaddr_new(char* ip, u16 port);
 
 static inline netaddr_t netaddr_newbroadcast(u16 port){
-    return (netaddr_t){.ip = INADDR_BROADCAST, .port = port};
+    return netaddr_new("255.255.255.255", port); 
 }
 
 netsock_t netsock_create_udp(void);

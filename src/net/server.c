@@ -192,7 +192,8 @@ netserver_t* NetServer_Init(int client_limit, uint32_t tickrate, u16 port, u16 b
     server->client_limit = client_limit;
     server->tickrate = tickrate;
     server->local_addr = netaddr_new("192.168.1.161", port);
-    server->broadcast_addr = netaddr_new("0.0.0.0", broadcast_port);
+    //server->broadcast_addr =  netaddr_newbroadcast(broadcast_port);
+    server->broadcast_addr = netaddr_new("255.255.255.255", broadcast_port);
     server->socket_udp = netsock_create_udp(); 
     server->socket_broadcast = netsock_create_udp();
     netsock_set_broadcast(server->socket_broadcast);
@@ -217,12 +218,13 @@ netserver_t* NetServer_Init(int client_limit, uint32_t tickrate, u16 port, u16 b
 
 
     previous = plt_timemillis();
-    char hostname[256];
-    char hostip[256];
-    gethostname(hostname, 256);
-    struct hostent* host = gethostbyname(hostname);
-    strcpy(hostip, inet_ntoa(*(struct in_addr*)host->h_addr_list[0]));
-    printf("[NET]: %dHz Server %s:%d\n", server->tickrate, hostip, port);
+    char hostip[256], broadcastip[256];
+    netaddr_to_string(server->local_addr, hostip, 256);
+    netaddr_to_string(server->broadcast_addr, broadcastip, 256);
+
+
+    printf("[NET]: %dHz Server %s\n", server->tickrate, hostip);
+    printf("[NET]: Broadcast %s\n", broadcastip);
     return server;
 }
 

@@ -38,7 +38,7 @@ int main(void){
     client->func_run = &runfunc;
     client->update_rate = 4;
 
-    NetClient_ConnectServer(client, netaddr_new(SERVER_IP, SERVER_PORT));
+    //NetClient_ConnectServer(client, netaddr_new(SERVER_IP, SERVER_PORT));
 
     while(1){
         NetClient_Run(client);

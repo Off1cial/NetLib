@@ -26,7 +26,7 @@ netclient_t* NetClient_Init(const char* name, size_t namelen, u16 broadcast_port
     client->connection.socket_udp = netsock_create_udp();
     client->socket_broadcast = netsock_create_udp();
     netsock_set_broadcast(client->socket_broadcast);
-    netaddr_t broadcast_addr = (netaddr_t){.ip = 0, .port = broadcast_port};
+    netaddr_t broadcast_addr = netaddr_new("0.0.0.0", broadcast_port);
     if (!netsock_bind(client->socket_broadcast, broadcast_addr)){
         netsock_close(client->connection.socket_udp);
         netsock_close(client->socket_broadcast);
@@ -94,7 +94,9 @@ void NetClient_ConnectServer(netclient_t* client, netaddr_t server_addr){
     client->attempt_lasttime = 0.0;
     client->attempts_made = 0;
     client->connection.chan.remote = server_addr;
+    printf("Set\n");
     client->cstate = NETC_STATE_ATTEMPTING;
+    client->connection.chan.state = NETCHAN_WAITING;
 }
 
 void NetClient_Run(netclient_t* client){
@@ -139,7 +141,6 @@ static void _handle_handshake_acc(netclient_t* client){
 
 static void cl_recv_broadcast(netclient_t* client){
     char buff[NET_MAX_PACKET];
-    printf("recvbroadcast\n");
     for (;;){
         netpacket_t brdcst = {0};
         netaddr_t from = {0};
@@ -149,22 +150,14 @@ static void cl_recv_broadcast(netclient_t* client){
                     buff, 
                     NET_MAX_PACKET, &from, &brdcst);
         if (recvsize <= 0) break;
-    
-        if (brdcst.type != NET_PACKET_BROADCAST) break;
-        int i = 0;
-        for(char *c=buff; i < recvsize; c++, i++){
-            printf("%c", *c);
-        }
-        putchar(10);
+        if (brdcst.type != NET_PACKET_BROADCAST) continue;    
+        char ipstring[256];
+        netaddr_t server_addr = {0};
+        size_t pos = 0;
+        server_addr = _read_netaddr(buff, &pos);
+        printf("Broadcast received (%dB):\n\t%s\n",recvsize, netaddr_to_string(from, ipstring, 256)); 
+        
 
-
-
-        // For now, automate a join attempt to the server
-        // Assuming the source is a game server?
-        size_t ip_pos = 0;
-        netaddr_t server_addr = _read_netaddr(buff, &ip_pos);
-        NetClient_ConnectServer(client, server_addr); 
-        break;
     }
 }
 
