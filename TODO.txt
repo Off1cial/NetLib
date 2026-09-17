@@ -11,4 +11,4 @@
     : FIXED - Client fails to leave the 'waiting state' after receiving broadcast
     : Make the client send a handshake ack before joining the server,
         The server checks for its arrival before allocing the space and allowing the join
-
+    : Replace broadcast with multicast to reach all subnets
