@@ -3,6 +3,7 @@
 #include "net/net.h"
 #include "net/platform/netplatform.h"
 #include "common/plt_time.h"
+#include "net/readwrite.h"
 #include <stdio.h>
 #include <string.h>
 #include <arpa/inet.h>
@@ -90,6 +91,8 @@ static void _handle_attempts(netclient_t* client, netaddr_t server_addr){
 }
 
 void NetClient_ConnectServer(netclient_t* client, netaddr_t server_addr){
+    client->attempt_lasttime = 0.0;
+    client->attempts_made = 0;
     client->connection.chan.remote = server_addr;
     client->cstate = NETC_STATE_ATTEMPTING;
 }
@@ -100,11 +103,11 @@ void NetClient_Run(netclient_t* client){
     previous = now;
     accum += dt;
     while (accum >= (1.0f / client->update_rate)){
+        printf("STATE= %d\n", client->cstate);
         if (client->cstate == NETC_STATE_IDLE){
             cl_recv_broadcast(client);
-        }else{
-            cl_recv(client);
         }
+        cl_recv(client);
         switch(client->cstate){
             case NETC_STATE_ATTEMPTING:
                 _handle_attempts(client, client->connection.chan.remote);
@@ -136,14 +139,15 @@ static void _handle_handshake_acc(netclient_t* client){
 
 static void cl_recv_broadcast(netclient_t* client){
     char buff[NET_MAX_PACKET];
-
+    printf("recvbroadcast\n");
     for (;;){
         netpacket_t brdcst = {0};
+        netaddr_t from = {0};
         netresult_size_t recvsize = 
             netsock_receive(
                     client->socket_broadcast, 
                     buff, 
-                    NET_MAX_PACKET, NULL, &brdcst);
+                    NET_MAX_PACKET, &from, &brdcst);
         if (recvsize <= 0) break;
     
         if (brdcst.type != NET_PACKET_BROADCAST) break;
@@ -152,12 +156,21 @@ static void cl_recv_broadcast(netclient_t* client){
             printf("%c", *c);
         }
         putchar(10);
+
+
+
+        // For now, automate a join attempt to the server
+        // Assuming the source is a game server?
+        size_t ip_pos = 0;
+        netaddr_t server_addr = _read_netaddr(buff, &ip_pos);
+        NetClient_ConnectServer(client, server_addr); 
+        break;
     }
 }
 
 static void cl_recv(netclient_t* client){
     char buff[NET_MAX_PACKET];
-
+    printf("recv\n");
     for (;;){
         netpacket_t incoming = {0};
         netresult_size_t recvsize = 
@@ -170,11 +183,13 @@ static void cl_recv(netclient_t* client){
         if (recvsize <= 0) {
             break; // Error occured, add code to handle individually 
         }
-
         switch(incoming.type){
             case NET_PACKET_HNDSHK_ACC:
                 printf("Handshake accepted: %s\n", incoming.data);
                 _handle_handshake_acc(client);
+                break;
+            case NET_PACKET_HNDSHK_DEN:
+                printf("Handshake denied: %s\n", incoming.data);
                 break;
 
             default: break;

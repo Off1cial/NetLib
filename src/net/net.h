@@ -15,9 +15,10 @@ typedef u16 netpacktype_t;
 #define NET_PACKET_HNDSHK_REQ 1
 #define NET_PACKET_HNDSHK_ACC 2
 #define NET_PACKET_HNDSHK_DEN 3
-#define NET_PACKET_NETCMD 4
-#define NET_PACKET_NETSNAPSHOT 5
-#define NET_PACKET_BROADCAST 6
+#define NET_PACKET_HNDSHK_ACK 4
+#define NET_PACKET_NETCMD 5
+#define NET_PACKET_NETSNAPSHOT 6
+#define NET_PACKET_BROADCAST 7
 
 typedef i16 netresult_size_t;
 typedef u16 netlen_t;
@@ -121,5 +122,13 @@ netresult_size_t netsock_senddata(netsock_t sock, netaddr_t dest, char* data, si
  * @param who Pointer to the source address to fill
  */
 netresult_size_t netsock_receive(netsock_t sock, char* output, size_t n, netaddr_t* who, netpacket_t* outpkt);
+
+
+netresult_size_t netsock_sendpacket(
+        netsock_t sock, 
+        netaddr_t dest, 
+        char* data, 
+        size_t n, 
+        netpacktype_t type);
 
 #endif  

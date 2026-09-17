@@ -8,6 +8,7 @@ typedef i32 clientid_t;
 
 typedef enum {
     CL_FREE = 0,
+    CL_WAITING_HNDSHK_ACK,
     CL_ZOMBIE,
     CL_CONNECTED,
     CL_ACTIVE,

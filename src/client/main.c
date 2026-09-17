@@ -17,12 +17,14 @@ void runfunc(void){
         return;
     char data[] = NAME;
     //printf("Sending: %s\n", data);
+    /*
     netresult_size_t size = netchan_send(
             &client->connection.chan, 
             client->connection.socket_udp, 
             NET_PACKET_NETCMD, 
             data, 
             NAMELEN);
+            */
 
 
 
@@ -36,7 +38,7 @@ int main(void){
     client->func_run = &runfunc;
     client->update_rate = 4;
 
-    //NetClient_ConnectServer(client, netaddr_new(SERVER_IP, SERVER_PORT));
+    NetClient_ConnectServer(client, netaddr_new(SERVER_IP, SERVER_PORT));
 
     while(1){
         NetClient_Run(client);

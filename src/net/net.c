@@ -123,6 +123,29 @@ netresult_size_t netsock_senddata(netsock_t sock, netaddr_t dest, char* data, si
     return (netresult_size_t)size;
 }
 
+netresult_size_t netsock_sendpacket(
+        netsock_t sock, 
+        netaddr_t dest, 
+        char* data, 
+        size_t n, 
+        netpacktype_t type){
+    netpkthdr_t header = {.size = n, .type = type, .sequence = 0};
+    size_t buffsize = NETPKT_HDR_SIZE + n;
+    char buff[buffsize];
+    size_t pos = 0;
+    _write_header(buff, &pos, &header);
+    memcpy(buff + pos, data, n);
+    struct sockaddr_in saddr = _netaddr_to_sockaddr(dest);
+    size_t sent = sendto(
+            sock, 
+            buff, 
+            buffsize, 
+            0, 
+            (struct sockaddr*)&saddr, 
+            sizeof(saddr));
+    return (netresult_size_t)sent;
+}
+
 /*
 netsize_t netsock_receive(netsock_t sock, char* output, netsize_t n, netaddr_t* who){
     if (NETSOCK_ISNULL(sock)){

@@ -12,6 +12,7 @@
 
 // Change with netpkthdr_t, this is to avoid struct padding
 #define NETPKT_HDR_SIZE (sizeof(u32) + sizeof(netlen_t) + sizeof(netpacktype_t))
+#define NETADDR_SIZE (sizeof(u32) + sizeof(u16))
 // Read little endian
 static inline u32 _read_u32(const char* buff, size_t* pos)
 {
@@ -85,10 +86,26 @@ static inline void _write_header(char* buff, size_t* pos, const netpkthdr_t* hea
     _WRITE_INT(buff, pos, header->type);
 }
 
+
+#define TYPEMATCH(match, item) (typeof(match))item 
 static inline netpkthdr_t _read_header(char* buff, size_t* pos){
     netpkthdr_t header = {0};
     header.sequence = (typeof(header.sequence))_read_intgeneric(buff, pos, sizeof(header.sequence));
     header.size = (typeof(header.sequence))_read_intgeneric(buff, pos, sizeof(header.size));
     header.type = (typeof(header.type))_read_intgeneric(buff, pos, sizeof(header.type));
     return header;
+}
+
+// Writes in host byte form
+static inline void _write_netaddr(char* buff, size_t* pos, netaddr_t addr){
+    _WRITE_INT(buff, pos, addr.ip);
+    _WRITE_INT(buff, pos, addr.port);
+}
+
+static inline netaddr_t _read_netaddr(char* buff, size_t* pos){
+    netaddr_t addr = {0};
+    addr.ip = TYPEMATCH(addr.ip, _read_intgeneric(buff, pos, sizeof(addr.ip)));
+
+    addr.port = 27015; 
+    return addr;
 }

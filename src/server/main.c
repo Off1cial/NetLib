@@ -2,7 +2,7 @@
 
 #include "net/server.h"
 
-#define MAX_CLIENTS 10
+#define MAX_CLIENTS 2
 #define TICKRATE 4
 #define PORT 27015
 #define BROADCAST_PORT (PORT + 1)

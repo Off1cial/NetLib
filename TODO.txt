@@ -7,5 +7,5 @@
     X Add UDP handshake for joining servers
     : Server shutdown broadcast packets
     : Client no response timeouts
-
+    : MUST FIX - Client fails to leave the 'waiting state' after receiving broadcast
 

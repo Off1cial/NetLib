@@ -35,7 +35,7 @@ int _extract_netcmd(char* buff, size_t buff_size, netcmd_t* out){
     return 1;
 }
 
-
+/*
 net_svclient_t* add_client(netserver_t *server, char* name, netaddr_t addr){
     if (server->client_count >= server->client_limit){
         return NULL;
@@ -52,7 +52,7 @@ net_svclient_t* add_client(netserver_t *server, char* name, netaddr_t addr){
     DOFUNC(server->func_client_init, &server->clients[id]);
     server->client_count++;
     return &server->clients[id];
-}
+}*/
 
 void remove_client(netserver_t* server, net_svclient_t* client){ 
     if (!server || !client) 
@@ -65,17 +65,47 @@ void remove_client(netserver_t* server, net_svclient_t* client){
 
 }
 
+net_svclient_t* alloc_client(netserver_t* server){
+    if (server->client_count >= server->client_limit) return NULL;
 
+    for (u32 i = 0; i < server->client_limit; i++){
+        net_svclient_t* cl = &server->clients[i];
+        if (cl->state == CL_FREE) return cl;
+    }
+    return NULL;
+}
+
+static void _send_hndshk_denial(netserver_t* server, netaddr_t addr){
+    char msg[] = "Connection refused: server is full\0";
+    size_t len = strlen(msg) + 1;
+    netsock_sendpacket(
+            server->socket_udp,
+            addr,
+            msg, len, NET_PACKET_HNDSHK_DEN
+            );
+}
+
+void _add_client(netserver_t* server, net_svclient_t* client, char* name, size_t namelen, netaddr_t addr){
+    client->state = CL_CONNECTED;
+    client->chan.state = NETCHAN_CONNECTED;
+    client->chan.remote = addr;
+    client->ticks_elapsed = 0;
+    strncpy(client->name, name, namelen);
+    DOFUNC(server->func_client_init, client);
+    server->clients[server->client_count++] = *client;
+}
 
 static void _handle_client_unknown(netserver_t* server, char* name, size_t n, netaddr_t addr){
-    net_svclient_t* client = add_client(server, name, addr);
+    net_svclient_t* client = alloc_client(server); // Potential slot
 
     if (!client){
-        printf("Failed to add client\n");
+        printf("Failed to add client, server full\n");
         // Send handshake denial packet
+        _send_hndshk_denial(server, addr);
         return;
     }
     // Send acception packet
+    _add_client(server, client, name, n, addr);
     char data[] = "Hello, client!\0";
     size_t len = strlen(data) + 1;
     netchan_send(
@@ -135,6 +165,10 @@ void sv_run(netserver_t *server){
 }
 
 netresult_size_t NetServer_Broadcast(netserver_t* server, void* data, size_t datalen){
+    
+    size_t metasize = NETPKT_HDR_SIZE + NETADDR_SIZE;
+    if (NET_MAX_PACKET - datalen < metasize)
+        return NETERROR_INVALIDSIZE;
     size_t buffsize = datalen + NETPKT_HDR_SIZE;
     char buff[buffsize];
    
@@ -145,6 +179,7 @@ netresult_size_t NetServer_Broadcast(netserver_t* server, void* data, size_t dat
     };
     size_t pos = 0;
     _write_header(buff, &pos, &header);
+    _write_netaddr(buff, &pos, server->local_addr);
     memcpy(buff + pos, data,  datalen);
     return netsock_senddata(server->socket_broadcast, server->broadcast_addr, buff, buffsize);
 }
