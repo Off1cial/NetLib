@@ -149,11 +149,11 @@ static void sv_recv(netserver_t* server){
 }
 
 static double accum = 0.0;
-static double previous = 0.0;
+static double previous_tick = 0.0;
 void sv_run(netserver_t *server){
     double now =  plt_timemillis();
-    double dt = (now - previous) / 1000.0f;
-    previous = now;
+    double dt = (now - previous_tick) / 1000.0f;
+    previous_tick = now;
     accum += dt;
     
     while (accum >= (1.0f / server->tickrate)){
@@ -164,8 +164,14 @@ void sv_run(netserver_t *server){
     }
 }
 
+static double previous_broadcast = 0.0;
 netresult_size_t NetServer_Broadcast(netserver_t* server, void* data, size_t datalen){
+    double now = plt_timemillis();
+    double since_broadcast = (now - previous_broadcast) / 1000.0f;
+    if (since_broadcast < server->broadcast_interval)
+        return 0;
     
+    previous_broadcast = now;
     size_t metasize = NETPKT_HDR_SIZE + NETADDR_SIZE;
     if (NET_MAX_PACKET - datalen < metasize)
         return NETERROR_INVALIDSIZE;
@@ -196,7 +202,9 @@ netserver_t* NetServer_Init(int client_limit, uint32_t tickrate, u16 port, u16 b
     server->broadcast_addr = netaddr_new("0.0.0.0", broadcast_port);
     server->socket_udp = netsock_create_udp(); 
     server->socket_broadcast = netsock_create_udp();
-    netsock_set_broadcast(server->socket_broadcast);
+    server->broadcast_interval = 4.0f;
+    netsock_setopt(server->socket_broadcast, NETSOCKOPT_BROADCAST, true);
+    netsock_setopt(server->socket_broadcast, NETSOCKOPT_REUSEADDR, true);
     if (!netsock_bind(server->socket_udp, server->local_addr)){
         fprintf(stderr, "Failed to bind server socket\n");
         netsock_close(server->socket_udp);
@@ -217,7 +225,8 @@ netserver_t* NetServer_Init(int client_limit, uint32_t tickrate, u16 port, u16 b
     */
 
 
-    previous = plt_timemillis();
+    previous_tick = plt_timemillis();
+    previous_broadcast = previous_tick;
     char hostip[256], broadcastip[256];
     netaddr_to_string(server->local_addr, hostip, 256);
     netaddr_to_string(server->broadcast_addr, broadcastip, 256);

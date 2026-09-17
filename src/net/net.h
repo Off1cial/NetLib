@@ -4,8 +4,10 @@
 #include "common/common.h"
 #include "net/platform/netplatform.h"
 #include <arpa/inet.h>
+#include <netinet/in.h>
 #include <string.h>
 #include <stdio.h>
+#include <sys/socket.h>
 
 #define NET_MAX_PACKET 512
 #define NET_MAX_STR 256
@@ -31,6 +33,9 @@ typedef u16 netlen_t;
     } while (0)
 
 
+#ifndef SO_REUSEPORT
+#define SO_REUSEPORT 0x0200
+#endif
 // Tells a client/server - "Receiving a set of data, the interesting section is of size 'netsize_t size'
 
 #define NETERROR_UNKNOWNPEER -1
@@ -76,6 +81,39 @@ typedef struct netsnapshot_t{
     u32 ack;
 } netsnapshot_t;
 
+/*
+#define	SO_DEBUG	    0x0001		 turn on debugging info recording 
+#define	SO_ACCEPTCONN	0x0002		 socket has had listen() 
+#define	SO_REUSEADDR	0x0004		 allow local address reuse 
+#define	SO_KEEPALIVE	0x0008	     keep connections alive 
+#define	SO_DONTROUTE	0x0010		 just use interface addresses 
+#define	SO_BROADCAST	0x0020		 permit sending of broadcast msgs 
+#define	SO_LINGER	    0x0080		 linger on close if data present 
+#define	SO_OOBINLINE	0x0100		 leave received OOB data in line 
+#define	SO_REUSEPORT	0x0200		 allow local address & port reuse 
+#define SO_TIMESTAMP	0x0800		 timestamp received dgram traffic 
+*/
+
+
+typedef enum { // Keep 'SO_' options first
+    NETSOCKOPT_DEBUG = SO_DEBUG,
+    NETSOCKOPT_ACCEPTCONN = SO_ACCEPTCONN,
+    NETSOCKOPT_REUSEADDR = SO_REUSEADDR,
+    NETSOCKOPT_KEEPALIVE = SO_KEEPALIVE,
+    NETSOCKOPT_DONTROUTE = SO_DONTROUTE,
+    NETSOCKOPT_BROADCAST = SO_BROADCAST,
+    NETSOCKOPT_LINGER = SO_LINGER,
+    NETSOCKOPT_OBBINLINE = SO_OOBINLINE,
+    //NETSOCKOPT_REUSEPORT = SO_REUSEPORT, 
+    NETSOCKOPT_TIMESTAMP = SO_TIMESTAMP,
+    NETSOCKOPT_MULTICASTDUMMY = NETSOCKOPT_TIMESTAMP + 1, // Not an enum
+    
+    NETSOCKOPT_MULTICAST_IF = NETSOCKOPT_MULTICASTDUMMY + 1,
+    NETSOCKOPT_MULTICAST_TTL = NETSOCKOPT_MULTICASTDUMMY + 2,
+    NETSOCKOPT_IP_ADD_MEMBERSHIP = NETSOCKOPT_MULTICASTDUMMY + 3,
+    NETSOCKOPT_IP_DROP_MEMBERSHIP = NETSOCKOPT_MULTICASTDUMMY + 4,
+} netsockopt_t;
+
 static inline netaddr_t netaddr_new(char* ip, u16 port){
     netaddr_t addr = {0};
     //inet_pton(AF_INET, ip, &addr.ip);
@@ -115,8 +153,8 @@ netsock_t netsock_create_tcp(void);
 void netsock_close(netsock_t sock);
 
 netresult_t netsock_bind(netsock_t sock, netaddr_t addr);
-netresult_t netsock_set_broadcast(netsock_t sock);
 
+netresult_t netsock_setopt(netsock_t sock, netsockopt_t opt, bool state);
 // For use on clients
 netresult_t netsock_connect(netsock_t sock, netaddr_t addr);
 

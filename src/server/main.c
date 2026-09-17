@@ -15,7 +15,7 @@ netserver_t* server = NET_NULL;
 void is_running(void){
     //printf("Is running\n");
     netresult_size_t size = NetServer_Broadcast(server, BROADCASTMSG, BROADCASTMSG_SIZE);
-    printf("Broadcasted %dB\n", size);
+    if (size > 0)printf("Broadcasted %dB\n", size);
 }
 
 void sv_shutdown(void){

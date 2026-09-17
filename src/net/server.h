@@ -45,6 +45,8 @@ typedef struct {
     // Configurables
     uint32_t tickrate;
 
+    double broadcast_interval;
+
 } netserver_t;
 
 netserver_t* NetServer_Init(int client_limit, uint32_t tickrate, u16 port, u16 broadcast_port);

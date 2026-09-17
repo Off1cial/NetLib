@@ -29,7 +29,8 @@ netclient_t* NetClient_Init(const char* name, size_t namelen, u16 broadcast_port
 
     client->connection.socket_udp = netsock_create_udp();
     client->socket_broadcast = netsock_create_udp();
-    netsock_set_broadcast(client->socket_broadcast);
+    netsock_setopt(client->socket_broadcast, NETSOCKOPT_BROADCAST, true);
+    netsock_setopt(client->socket_broadcast, NETSOCKOPT_REUSEADDR, true);
     netaddr_t broadcast_addr = netaddr_newany(broadcast_port);
     if (!netsock_bind(client->socket_broadcast, broadcast_addr)){
         netsock_close(client->connection.socket_udp);
@@ -176,7 +177,6 @@ static void cl_recv_broadcast(netclient_t* client){
 
 static void cl_recv(netclient_t* client){
     char buff[NET_MAX_PACKET];
-    printf("recv\n");
     for (;;){
         netpacket_t incoming = {0};
         netresult_size_t recvsize = 

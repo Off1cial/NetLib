@@ -13,9 +13,6 @@
 #include <arpa/inet.h>
 #endif
 
-#ifndef SO_REUSEPORT
-#define SO_REUSEPORT 15
-#endif
 
 #define ADDRCAST(sockaddrin) (struct sockaddr*)&sockaddrin
 
@@ -76,22 +73,6 @@ netresult_t netsock_bind(netsock_t sock, netaddr_t addr){
 #endif
 }
 
-
-netresult_t netsock_set_broadcast(netsock_t sock)
-{
-    int enable = 1;
-    if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (const char*)&enable, sizeof(enable)) != 0) {
-        return NET_FAILURE;
-    }
-
-    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&enable, sizeof(enable)) != 0) {
-        return NET_FAILURE;
-    }
-    if (setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, (const char*)&enable, sizeof(enable)) != 0) {
-        return NET_FAILURE;
-    }
-    return NET_SUCCESS;
-}
 
 
 // For use on clients
@@ -192,3 +173,23 @@ netresult_size_t netsock_receive(
 }
 
 
+
+netresult_t netsock_setopt(netsock_t sock, netsockopt_t opt, bool state){
+    if (sock == NETSOCK_INVALID) return NET_FAILURE; 
+     
+    if (opt < NETSOCKOPT_MULTICASTDUMMY){
+        int res = setsockopt(sock, SOL_SOCKET, opt, &state, sizeof(sock));
+        if (res != 0) {
+            PERROR();
+            return NET_FAILURE;
+        }
+        return NET_SUCCESS;
+    }
+
+    int res = setsockopt(sock, IPPROTO_IP, opt, &state, sizeof(sock));
+    if (res != 0){
+        PERROR();
+        return NET_FAILURE;
+    }
+    return NET_SUCCESS;
+}
