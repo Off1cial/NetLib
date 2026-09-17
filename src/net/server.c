@@ -181,7 +181,7 @@ netresult_size_t NetServer_Broadcast(netserver_t* server, void* data, size_t dat
     _write_header(buff, &pos, &header);
     _write_netaddr(buff, &pos, server->local_addr);
     memcpy(buff + pos, data,  datalen);
-    return netsock_senddata(server->socket_broadcast, server->broadcast_addr, buff, buffsize);
+    return netsock_senddata(server->socket_broadcast,server->broadcast_addr, buff, buffsize);
 }
 
 
@@ -191,11 +191,8 @@ netserver_t* NetServer_Init(int client_limit, uint32_t tickrate, u16 port, u16 b
     server->clients = calloc(client_limit, sizeof(net_svclient_t)); 
     server->client_limit = client_limit;
     server->tickrate = tickrate;
-    //server->local_addr.port = port;
-    //server->local_addr.ip = 0;
-    server->local_addr = netaddr_new("0.0.0.0", port);
-    //server->broadcast_addr = netaddr_newbroadcast(broadcast_port);
-    server->broadcast_addr = netaddr_new("127.0.0.1", broadcast_port);
+    server->local_addr = netaddr_new("192.168.1.161", port);
+    server->broadcast_addr = netaddr_new("0.0.0.0", broadcast_port);
     server->socket_udp = netsock_create_udp(); 
     server->socket_broadcast = netsock_create_udp();
     netsock_set_broadcast(server->socket_broadcast);

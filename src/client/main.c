@@ -10,8 +10,8 @@ netclient_t* client = NET_NULL;
 
 #define SERVER_PORT 27015
 #define SERVER_BROADCAST_PORT (SERVER_PORT + 1)
-#define SERVER_IP "192.168.1.161" // Just so happens?
 
+#define SERVER_IP "192.168.1.161" // Just so happens?
 void runfunc(void){
     if (client->connection.chan.state != NETCHAN_CONNECTED)
         return;

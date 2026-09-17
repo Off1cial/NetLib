@@ -81,16 +81,13 @@ netresult_t netsock_bind(netsock_t sock, netaddr_t addr){
 netresult_t netsock_set_broadcast(netsock_t sock)
 {
     int enable = 1;
-    if (setsockopt(
-        sock,
-        SOL_SOCKET,
-        SO_BROADCAST,
-        (const char*)&enable,
-        sizeof(enable)
-    ) != 0) {
+    if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (const char*)&enable, sizeof(enable)) != 0) {
         return NET_FAILURE;
     }
 
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&enable, sizeof(enable)) != 0) {
+        return NET_FAILURE;
+    }
     return NET_SUCCESS;
 }
 
@@ -141,7 +138,7 @@ netresult_size_t netsock_sendpacket(
             buff, 
             buffsize, 
             0, 
-            (struct sockaddr*)&saddr, 
+            ADDRCAST(saddr), 
             sizeof(saddr));
     return (netresult_size_t)sent;
 }
