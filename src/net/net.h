@@ -45,11 +45,23 @@ typedef u16 netlen_t;
 
 #define NETPORT_ANY 0
 
+// IF YOU CHANGE THIS, CHANGE NETPKT_HDR_SIZE
 typedef struct {
     u32 sequence;
     netlen_t size; // size of corresponding data in the buffer
     netpacktype_t type;
 }netpkthdr_t;
+
+// Host side address data - automatically converted to network-side when used
+typedef struct {
+    u32 ip;
+    u16 port;
+} netaddr_t;
+
+// Change with netpkthdr_t, this is to avoid struct padding
+#define NETPKT_HDR_SIZE (sizeof(u32) + sizeof(netlen_t) + sizeof(netpacktype_t))
+// Change with netaddr_t
+#define NETADDR_SIZE (sizeof(u32) + sizeof(u16))
 
 // Used on receiving end to contain incoming data, not sent over network 
 typedef struct {
@@ -61,11 +73,6 @@ typedef struct {
     netlen_t size;
 } netpacket_t;
 
-// Host side address data - automatically converted to network-side when used
-typedef struct {
-    u32 ip;
-    u16 port;
-} netaddr_t;
 
 // Encapsulates a client's input to be sent to the server
 typedef struct netcmd_t{

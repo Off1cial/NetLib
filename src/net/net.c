@@ -165,7 +165,7 @@ netresult_size_t netsock_receive(
 
     netpkthdr_t hdr = {0};
     size_t pos = 0;
-    hdr = _read_header(output, &pos);
+    if (!_read_header(output, n, &pos, &hdr)) return NETERROR_INVALIDSIZE;
     
     outpkt->sequence = hdr.sequence;
     outpkt->size = hdr.size;

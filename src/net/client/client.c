@@ -184,12 +184,15 @@ static void cl_recv_broadcast(netclient_t* client){
         if (brdcst.type != NET_PACKET_BROADCAST) continue;
         if (client->cstate != NETC_STATE_IDLE) continue; // Check after recv to drain socket
         size_t pos = 0;
-        netpkthdr_t hdr = _read_header(buff, &pos);
-        (void)hdr;
-        netaddr_t server_addr = _read_netaddr(buff, &pos);
-        u32 tickrate = _read_u32(buff, &pos);
-        u32 client_count = _read_u32(buff, &pos);
-        u32 client_limit = _read_u32(buff, &pos);
+        netpkthdr_t hdr;
+        netaddr_t server_addr;
+        if (!_read_header(buff, NET_MAX_PACKET, &pos, &hdr)) continue;
+        //(void)hdr; // why is this here
+        if (!_read_netaddr(buff, NET_MAX_PACKET, &pos, &server_addr)) continue;
+        u32 tickrate, client_count, client_limit;
+        if (!_read_u32(buff, NET_MAX_PACKET, &pos, &tickrate)) continue;
+        if (!_read_u32(buff, NET_MAX_PACKET, &pos, &client_count)) continue;
+        if (!_read_u32(buff, NET_MAX_PACKET, &pos, &client_limit)) continue;
 
         char ipstring[256];
         printf(

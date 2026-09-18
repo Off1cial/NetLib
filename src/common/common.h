@@ -20,7 +20,8 @@ typedef uint8_t  u8;
 
 static inline void ASSERT(int8_t condition, const char* msg){
 #ifdef NET_USE_ASSERT
-    assert(condition && msg);
+    if (msg) assert(condition && msg);
+    else assert(condition);
 #endif
 
 }

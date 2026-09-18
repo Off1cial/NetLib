@@ -187,8 +187,8 @@ static void sv_recv(netserver_t* server){
 
         // Known client -- process the packet we just read instead of
         // discarding it and hoping something else reads it later.
-        printf("Known client\n");
         net_svclient_t* client = &server->clients[client_id];
+        printf("Known client: \"%s\"\n", client->name);
         client->chan.t_lastrecv_ms = plt_timemillis();
         client->chan.in_sequence = 1;
 
