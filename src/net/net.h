@@ -95,7 +95,7 @@ typedef struct netsnapshot_t{
 */
 
 
-typedef enum { // Keep 'SO_' options first
+typedef enum { // Keep in ascending order
     NETSOCKOPT_DEBUG = SO_DEBUG,
     NETSOCKOPT_ACCEPTCONN = SO_ACCEPTCONN,
     NETSOCKOPT_REUSEADDR = SO_REUSEADDR,
@@ -106,14 +106,15 @@ typedef enum { // Keep 'SO_' options first
     NETSOCKOPT_OBBINLINE = SO_OOBINLINE,
     //NETSOCKOPT_REUSEPORT = SO_REUSEPORT, 
     NETSOCKOPT_TIMESTAMP = SO_TIMESTAMP,
-    NETSOCKOPT_MULTICASTDUMMY = NETSOCKOPT_TIMESTAMP + 1, // Not an enum
-    
-    NETSOCKOPT_MULTICAST_IF = NETSOCKOPT_MULTICASTDUMMY + 1,
-    NETSOCKOPT_MULTICAST_TTL = NETSOCKOPT_MULTICASTDUMMY + 2,
-    NETSOCKOPT_MULTICAST_LOOPBACK = NETSOCKOPT_MULTICASTDUMMY + 3,
-    NETSOCKOPT_IP_ADD_MEMBERSHIP = NETSOCKOPT_MULTICASTDUMMY + 4,
-    NETSOCKOPT_IP_DROP_MEMBERSHIP = NETSOCKOPT_MULTICASTDUMMY + 5,
 } netsockopt_t;
+
+typedef enum{ // Keep in ascending order
+    NETSOCKOPT_MULTICAST_IF = IP_MULTICAST_IF,
+    NETSOCKOPT_MULTICAST_TTL = IP_MULTICAST_TTL,
+    NETSOCKOPT_MULTICAST_LOOP = IP_MULTICAST_LOOP,
+    NETSOCKOPT_IP_ADD_MEMBERSHIP = IP_ADD_MEMBERSHIP, 
+    NETSOCKOPT_IP_DROP_MEMBERSHIP = IP_DROP_MEMBERSHIP,
+} netsockopt_ip_t;
 
 static inline netaddr_t netaddr_new(char* ip, u16 port){
     netaddr_t addr = {0};
@@ -160,7 +161,9 @@ void netsock_close(netsock_t sock);
 
 netresult_t netsock_bind(netsock_t sock, netaddr_t addr);
 
-netresult_t netsock_setopt(netsock_t sock, netsockopt_t opt, bool state);
+netresult_t netsock_setopt(netsock_t sock, netsockopt_t opt, void* value, size_t value_size);
+
+netresult_t netsock_setopt_ip(netsock_t sock, netsockopt_ip_t opt, void* value, size_t value_size);
 
 //netresult_t netsock_connect(netsock_t sock, netaddr_t addr);
 

@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <errno.h>
 
 
 // Timing variables for consistent update rate
@@ -29,8 +30,9 @@ netclient_t* NetClient_Init(const char* name, size_t namelen, u16 broadcast_port
 
     client->connection.socket_udp = netsock_create_udp();
     client->socket_broadcast = netsock_create_udp();
-    netsock_setopt(client->socket_broadcast, NETSOCKOPT_BROADCAST, true);
-    netsock_setopt(client->socket_broadcast, NETSOCKOPT_REUSEADDR, true);
+    int enable = 1;
+    netsock_setopt(client->socket_broadcast, NETSOCKOPT_BROADCAST, &enable, sizeof(enable));
+    netsock_setopt(client->socket_broadcast, NETSOCKOPT_REUSEADDR, &enable, sizeof(enable));
     netaddr_t broadcast_addr = netaddr_newany(broadcast_port);
     netaddr_t group = netaddr_newmulticast(broadcast_port);
 
@@ -125,7 +127,6 @@ void NetClient_Run(netclient_t* client){
     accum += dt;
     while (accum >= (1.0f / client->update_rate)){
         if (client->cstate == NETC_STATE_IDLE){
-            printf("Searching for broadcasts\n");
             cl_recv_broadcast(client);
         }
         cl_recv(client);
@@ -157,7 +158,6 @@ static void _handle_handshake_accept(netclient_t* client){
 }
 
 
-
 static void cl_recv_broadcast(netclient_t* client){
     char buff[NET_MAX_PACKET];
     for (;;){
@@ -168,7 +168,6 @@ static void cl_recv_broadcast(netclient_t* client){
                     client->socket_broadcast, 
                     buff, 
                     NET_MAX_PACKET, &from, &brdcst);
-        printf("Recvsize = %d\n", recvsize);
         if (recvsize <= 0) break;
         if (brdcst.type != NET_PACKET_BROADCAST) continue;    
         size_t pos = 0;
@@ -180,6 +179,7 @@ static void cl_recv_broadcast(netclient_t* client){
         NetClient_ConnectServer(client, server_addr);
     }
 }
+
 
 static void cl_recv(netclient_t* client){
     char buff[NET_MAX_PACKET];

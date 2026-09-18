@@ -213,10 +213,23 @@ netserver_t* NetServer_Init(int client_limit, uint32_t tickrate, u16 port, u16 b
     server->socket_udp = netsock_create_udp(); 
     server->socket_broadcast = netsock_create_udp();
     server->broadcast_interval = 3.0f;
-    netsock_setopt(server->socket_broadcast, NETSOCKOPT_MULTICAST_IF, true);
-    netsock_setopt(server->socket_broadcast, NETSOCKOPT_MULTICAST_LOOPBACK, true);
-    netsock_setopt(server->socket_broadcast, NETSOCKOPT_BROADCAST, true);
-    netsock_setopt(server->socket_broadcast, NETSOCKOPT_REUSEADDR, true);
+
+
+    int one = 1;
+    struct in_addr mcast_iface;
+    mcast_iface.s_addr = htonl(server->net_addr.ip);
+
+    netsock_setopt_ip(server->socket_broadcast, NETSOCKOPT_MULTICAST_IF,
+                  &mcast_iface, sizeof(mcast_iface));
+    netsock_setopt_ip(server->socket_broadcast, NETSOCKOPT_MULTICAST_LOOP,
+                  &one, sizeof(one));
+
+    // Socket-level options take an int.
+    netsock_setopt(server->socket_broadcast, NETSOCKOPT_BROADCAST,
+               &one, sizeof(one));
+    netsock_setopt(server->socket_broadcast, NETSOCKOPT_REUSEADDR,
+               &one, sizeof(one));
+
     if (!netsock_bind(server->socket_udp, netaddr_newany(port))){
         fprintf(stderr, "Failed to bind server socket\n");
         netsock_close(server->socket_udp);

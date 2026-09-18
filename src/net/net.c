@@ -177,25 +177,29 @@ netresult_size_t netsock_receive(
 
 
 
-netresult_t netsock_setopt(netsock_t sock, netsockopt_t opt, bool state){
-    if (sock == NETSOCK_INVALID) return NET_FAILURE; 
-    
-    int val = state ? 1 : 0;
+netresult_t netsock_setopt(netsock_t sock, netsockopt_t opt, void* value, size_t value_size){
+    if (sock == NETSOCK_INVALID) return NETERROR_INVALIDSOCKET;
+    if (opt < NETSOCKOPT_DEBUG || opt > NETSOCKOPT_TIMESTAMP)
+        return NETERROR_NULLDATA;
 
-    if (opt < NETSOCKOPT_MULTICASTDUMMY){
-        int res = setsockopt(sock, SOL_SOCKET, opt, &val, sizeof(val));
-        if (res != 0) {
-            PERROR();
-            return NET_FAILURE;
-        }
-        return NET_SUCCESS;
-    }
-
-    int res = setsockopt(sock, IPPROTO_IP, opt, &val, sizeof(val));
-    if (res != 0){
+    int res = setsockopt(sock, SOL_SOCKET, opt, value, value_size);
+    if (res < 0){
         PERROR();
         return NET_FAILURE;
-    }
+    } 
+    return NET_SUCCESS;
+}
+
+netresult_t netsock_setopt_ip(netsock_t sock, netsockopt_ip_t opt, void* value, size_t value_size){
+    if (sock == NETSOCK_INVALID) return NETERROR_INVALIDSOCKET;
+    if (opt < NETSOCKOPT_MULTICAST_IF || opt > NETSOCKOPT_IP_DROP_MEMBERSHIP)
+        return NETERROR_NULLDATA;
+
+    int res = setsockopt(sock, IPPROTO_IP, opt, value, value_size);
+    if (res < 0){
+        PERROR();
+        return NET_FAILURE;
+    } 
     return NET_SUCCESS;
 }
 
