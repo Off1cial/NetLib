@@ -1,4 +1,4 @@
-#include "net/client.h"
+#include "net/client/client.h"
 #include "net/chan.h"
 #include "net/net.h"
 #include "net/platform/netplatform.h"
@@ -21,12 +21,22 @@ static void cl_recv(netclient_t* client);
 static void cl_recv_broadcast(netclient_t* client);
 
 netclient_t* NetClient_Init(const char* name, size_t namelen, u16 broadcast_port){
-    netclient_t* client = calloc(1, sizeof(netclient_t)); 
+    netclient_t* client = calloc(1, sizeof(netclient_t));
     if (!client){
         return NET_NULL;
     }
     client->connection.socket_udp = -1;
-    strncpy(client->name, name, namelen + 1);
+
+    // Bound the copy to the destination buffer instead of trusting namelen.
+    // The previous strncpy(client->name, name, namelen + 1) could overflow
+    // client->name if the caller passed a name longer than the fixed field.
+    {
+        size_t len = namelen;
+        if (len >= sizeof(client->name))
+            len = sizeof(client->name) - 1;
+        memcpy(client->name, name, len);
+        client->name[len] = '\0';
+    }
 
     client->connection.socket_udp = netsock_create_udp();
     client->socket_broadcast = netsock_create_udp();
@@ -46,6 +56,10 @@ netclient_t* NetClient_Init(const char* name, size_t namelen, u16 broadcast_port
     }
     if (!netsock_joinmulticast(client->socket_broadcast, group, netaddr_newany(0))){
         printf("Failed to join multicast group\n");
+        // Previously leaked both sockets and the client struct on this path.
+        netsock_close(client->connection.socket_udp);
+        netsock_close(client->socket_broadcast);
+        free(client);
         return NET_NULL;
     }
 
@@ -56,32 +70,24 @@ netclient_t* NetClient_Init(const char* name, size_t namelen, u16 broadcast_port
 
     previous = plt_timemillis();
     client->cstate = NETC_STATE_IDLE;
-    
 
     return client;
 }
 
 // Forms the connection for communication - unrelated to joining a game server
 netresult_t NetClient_ConnectAttempt(netclient_t* client, netaddr_t server_addr){
-        
+
     memset(&client->connection.chan, 0, sizeof(netchan_t));
     if (NETSOCK_ISNULL(client->connection.socket_udp)){
         client->connection.socket_udp = netsock_create_udp();
     }
-    /*
-    netresult_t res = netsock_connect(client->connection.socket_udp, server_addr);
-    if (!res)
-        return NET_FAILURE;
-    client->connection.chan.remote = server_addr;
-    client->connection.chan.state = NETCHAN_CONNECTED;
-    */
     netresult_t res = netchan_connect(
-            &client->connection.chan, 
+            &client->connection.chan,
             client->connection.socket_udp,
             client->name, strlen(client->name),
             server_addr);
     if (!res) return NET_FAILURE;
-    
+
     char ipbuff[256];
     printf("Attempting connection to %s\n", netaddr_to_string(server_addr, ipbuff, 256));
     client->cstate = NETC_STATE_ATTEMPTING;
@@ -106,7 +112,7 @@ static void _handle_attempts(netclient_t* client, netaddr_t server_addr){
     double time_since_last = (now - client->attempt_lasttime) / 1000.0;
     if (time_since_last < CON_TIMER)
         return;
-    
+
     NetClient_ConnectAttempt(client, server_addr);
     client->attempts_made++;
     client->attempt_lasttime = now;
@@ -149,11 +155,19 @@ void NetClient_Run(netclient_t* client){
 }
 
 
-
-
-
 static void _handle_handshake_accept(netclient_t* client){
     client->connection.chan.state = NETCHAN_CONNECTED;
+    netresult_size_t size = netchan_send(
+            &client->connection.chan,
+            client->connection.socket_udp,
+            NET_PACKET_HNDSHK_ACK,
+            NULL, 0);
+    if (size < 0){
+        printf("Failed to sent hndshk ack: ");PERROR();
+        client->cstate = NETC_STATE_IDLE;
+        return;
+    }
+    printf("Sent handshake ack\n");
     client->cstate = NETC_STATE_JOINING;
 }
 
@@ -163,19 +177,25 @@ static void cl_recv_broadcast(netclient_t* client){
     for (;;){
         netpacket_t brdcst = {0};
         netaddr_t from = {0};
-        netresult_size_t recvsize = 
+        netresult_size_t recvsize =
             netsock_receive(
-                    client->socket_broadcast, 
-                    buff, 
+                    client->socket_broadcast,
+                    buff,
                     NET_MAX_PACKET, &from, &brdcst);
         if (recvsize <= 0) break;
-        if (brdcst.type != NET_PACKET_BROADCAST) continue;    
+        if (brdcst.type != NET_PACKET_BROADCAST) continue;
         size_t pos = 0;
         netpkthdr_t hdr = _read_header(buff, &pos);
+        (void)hdr;
         netaddr_t server_addr = _read_netaddr(buff, &pos);
+        u32 tickrate = _read_u32(buff, &pos);
+        u32 client_count = _read_u32(buff, &pos);
+        u32 client_limit = _read_u32(buff, &pos);
 
         char ipstring[256];
-        printf("Broadcast received (%dB):\n\t%s\n",recvsize, netaddr_to_string(server_addr, ipstring, 256)); 
+        printf(
+            "Broadcast received (%ldB) from:%s\n\tTickrate: %uHz\n\tClient Count: %u\n\tClient Limit: %u\n", 
+            (long)recvsize, netaddr_to_string(server_addr, ipstring, 256), tickrate, client_count, client_limit);
         NetClient_ConnectServer(client, server_addr);
     }
 }
@@ -185,15 +205,15 @@ static void cl_recv(netclient_t* client){
     char buff[NET_MAX_PACKET];
     for (;;){
         netpacket_t incoming = {0};
-        netresult_size_t recvsize = 
+        netresult_size_t recvsize =
             netchan_recv(
-                    &client->connection.chan, 
-                    client->connection.socket_udp, 
+                    &client->connection.chan,
+                    client->connection.socket_udp,
                     buff, NET_MAX_PACKET,
                     &incoming);
-        
+
         if (recvsize <= 0) {
-            break; // Error occured, add code to handle individually 
+            break; // Error occured, add code to handle individually
         }
         switch(incoming.type){
             case NET_PACKET_HNDSHK_ACC:

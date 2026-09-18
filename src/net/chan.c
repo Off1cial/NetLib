@@ -43,7 +43,7 @@ netresult_size_t netchan_send(
         netpacktype_t type, 
         const void* data, 
         size_t size){
-    if (!data || !chan || (size <= 0)) return NETERROR_NULLDATA;
+    if (!chan) return NETERROR_NULLDATA;
     if (sock == NETSOCK_INVALID) return NETERROR_INVALIDSOCKET;
     
     size_t buffsize = NETPKT_HDR_SIZE + size;
@@ -58,7 +58,7 @@ netresult_size_t netchan_send(
     char buff[buffsize]; 
     size_t pos = 0;
     _write_header(buff, &pos, &header);
-    memcpy(buff + pos, data, size);
+    if(data) memcpy(buff + pos, data, size);
 
     size_t sent = netsock_senddata(sock, chan->remote, buff, buffsize);
     if (sent <= 0) return sent;

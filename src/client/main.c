@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <string.h>
-#include "net/client.h"
+#include "net/client/client.h"
 #include "net/net.h"
 
 netclient_t* client = NET_NULL;

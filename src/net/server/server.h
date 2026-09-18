@@ -8,7 +8,7 @@ typedef i32 clientid_t;
 
 typedef enum {
     CL_FREE = 0,
-    CL_WAITING_HNDSHK_ACK,
+    CL_TEMPORARY, // e,g the server is waiting for handshake ack from this client
     CL_ZOMBIE,
     CL_CONNECTED,
     CL_ACTIVE,
@@ -46,6 +46,7 @@ typedef struct {
     uint32_t tickrate;
 
     double broadcast_interval;
+    double client_timeout; // How long, at maximum, do we wait between comms before kicking?
 
 } netserver_t;
 

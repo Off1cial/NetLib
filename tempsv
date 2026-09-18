@@ -12,9 +12,12 @@
 #include <unistd.h>
 
 
+static double accum = 0.0;
+static double previous_tick = 0.0;
+static double now = 0.0;
 
 clientid_t _id_clientaddr(netserver_t *server, netaddr_t addr){
-    for (u32 i = 0; i < server->client_count; i++){
+    for (u32 i = 0; i < server->client_limit; i++){
         if (netaddr_equal(addr, server->clients[i].chan.remote)){
             return i;
         }
@@ -83,6 +86,16 @@ static void _send_hndshk_denial(netserver_t* server, netaddr_t addr){
 }
 
 
+static void _send_hndshk_accept(netserver_t* server, netaddr_t addr){
+    char msg[] = "Connection accepted, server is awaiting ack\0";
+    size_t len = strlen(msg) + 1;
+    netsock_sendpacket(
+            server->socket_udp,
+            addr,
+            msg, len, NET_PACKET_HNDSHK_ACC
+            );
+}
+
 void _add_client(
     netserver_t* server,
     net_svclient_t* client,
@@ -106,28 +119,35 @@ void _add_client(
     server->client_count++;
 }
 
-static void _handle_client_unknown(netserver_t* server, char* name, size_t n, netaddr_t addr){
-    net_svclient_t* client = alloc_client(server); // Potential slot
+// A stripped 'add_client'
+static net_svclient_t* _temp_client(netserver_t* server, netaddr_t cl_addr){
+    net_svclient_t* client = alloc_client(server);
+    if (!client) return NET_NULL;
+    server->client_count++;
+    client->state = CL_TEMPORARY;
+    client->chan.state  = NETCHAN_CONNECTED;
+    client->chan.remote = cl_addr;
+    return client;
+}
 
+static void _handle_client_unknown(
+        netserver_t* server,
+        char* name, size_t namelen,
+        netaddr_t addr
+        )
+{
+    // Temporarily allocate a client
+    net_svclient_t* client = _temp_client(server, addr);
     if (!client){
-        printf("Failed to add client, server full\n");
-        // Send handshake denial packet
         _send_hndshk_denial(server, addr);
         return;
     }
-    // Send acception packet
-    _add_client(server, client, name, n, addr);
-    char data[] = "Hello, client!\0";
-    size_t len = strlen(data) + 1;
-    netchan_send(
-        &client->chan, 
-        server->socket_udp, 
-        NET_PACKET_HNDSHK_ACC, 
-        data, len
-    );
-    printf("Client '%s' added\n", name);
+    _send_hndshk_accept(server, addr);
+    // HANDLE A CHAN TIMEOUT ELSEWHERE
 }
 
+
+// Do i turn this into a specifically non-client recv?
 static void sv_recv(netserver_t* server){
     char buff[NET_MAX_PACKET];
     for (;;){
@@ -146,8 +166,10 @@ static void sv_recv(netserver_t* server){
         if (client_id == CLIENT_UNKNOWN){
             // New client
             printf("New client\n");
-            if (packet.type == NET_PACKET_HNDSHK_REQ){
-                _handle_client_unknown(server, packet.data, packet.size, fromaddr);
+            switch(packet.type){
+                case NET_PACKET_HNDSHK_REQ:
+                    _handle_client_unknown(server, packet.data, packet.size, fromaddr);
+                    break;
             }
             continue;
         } 
@@ -158,11 +180,48 @@ static void sv_recv(netserver_t* server){
     }
 
 }
+static void sv_recv_clients(netserver_t* server){
+    // server->clients can have gaps, iterate limit
+    for (u32 i = 0; i < server->client_limit; i++){
+        if (server->clients[i].state == CL_FREE) continue;
+        net_svclient_t* client = &server->clients[i];
+        double dt = (plt_timemillis() - client->chan.t_lastrecv_ms) / 1000.0f;
+        if ((dt >= server->client_timeout) && client->chan.in_sequence){
+            printf("Timeout\n");
+            remove_client(server, client);
+            continue;
+        }
 
-static double accum = 0.0;
-static double previous_tick = 0.0;
+        char inbound[NET_MAX_PACKET];
+        netpacket_t inpacket = {0};
+        for (;;)
+        {
+            netresult_size_t insize = 
+            netchan_recv(
+                &client->chan,
+                server->socket_udp,
+                inbound, NET_MAX_PACKET, &inpacket
+                );
+            if (insize  == 0){
+                break;
+            }
+            printf("Client %d recv: %d\n", i, insize);
+
+            // Handle packet of known client
+            switch(inpacket.type){
+                case NET_PACKET_HNDSHK_ACK:
+                    printf("Received ack\n");
+                    break;
+            }
+            
+        }
+         
+    }
+}
+
+
 void sv_run(netserver_t *server){
-    double now =  plt_timemillis();
+    now =  plt_timemillis();
     double dt = (now - previous_tick) / 1000.0f;
     previous_tick = now;
     accum += dt;
@@ -170,6 +229,7 @@ void sv_run(netserver_t *server){
     while (accum >= (1.0f / server->tickrate)){
         //if(server->func_run) server->func_run();
         sv_recv(server);
+        sv_recv_clients(server);
         DOFUNC(server->func_run);
         accum -= (1.0f / server->tickrate);
     }
@@ -213,6 +273,7 @@ netserver_t* NetServer_Init(int client_limit, uint32_t tickrate, u16 port, u16 b
     server->socket_udp = netsock_create_udp(); 
     server->socket_broadcast = netsock_create_udp();
     server->broadcast_interval = 3.0f;
+    server->client_timeout = 10.0f;
 
 
     int one = 1;
@@ -264,3 +325,4 @@ void NetServer_Shutdown(netserver_t* server){
 void NetServer_Run(netserver_t* server){
     sv_run(server);
 }
+

@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "net/server.h"
+#include "net/server/server.h"
 
 #define MAX_CLIENTS 2
 #define TICKRATE 20

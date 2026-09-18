@@ -101,7 +101,7 @@ netresult_size_t netsock_senddata(netsock_t sock, netaddr_t dest, char* data, si
     struct sockaddr_in destaddr = _netaddr_to_sockaddr(dest);
     ssize_t size = sendto(sock, data, n, 0, ADDRCAST(destaddr), sizeof(destaddr));
     if (size < 0){
-        perror("sendto");
+        PERROR();
     }
     return (netresult_size_t)size;
 }
