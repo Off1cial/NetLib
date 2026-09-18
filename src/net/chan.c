@@ -1,10 +1,41 @@
 #include "net/chan.h"
+#include "common/plt_time.h"
 #include "net/net.h"
 #include "net/readwrite.h"
 #include "net/platform/netplatform.h"
+#include "common/common.h"
 #include <string.h>
 #include <stdio.h>
 
+netchan_t netchan_new(netaddr_t remote){
+    netchan_t chan = {0};
+    chan.remote = remote;
+    return chan;
+}
+
+void netchan_setremote(netchan_t* chan, netaddr_t remote){
+    ASSERT(NULL != chan, "Attempted to set the remote of a null channel");
+    chan->remote = remote;
+}
+
+void netchan_updatetime(netchan_t* chan, double* time_ms){
+    ASSERT(chan && time_ms, "Attempted to set the time of a null channel/time");
+    *time_ms = plt_timemillis();
+}
+
+
+void netchan_updatesequence_in(netchan_t* chan){
+    ASSERT(NULL != chan, "Attempted to update the sequence of a null channel");
+    chan->in_sequence_bits *= 2;
+    chan->in_sequence++;
+    netchan_updatetime(chan, &chan->t_lastrecv_ms);
+}
+
+void netchan_updatesequence_out(netchan_t* chan){
+    ASSERT(NULL != chan, "Attempted to update the sequence of a null channel");
+    chan->out_sequence++;
+    netchan_updatetime(chan, &chan->t_lastsend_ms);
+}
 
 netresult_size_t netchan_send(
         netchan_t* chan, 
@@ -15,20 +46,26 @@ netresult_size_t netchan_send(
     if (!data || !chan || (size <= 0)) return NETERROR_NULLDATA;
     if (sock == NETSOCK_INVALID) return NETERROR_INVALIDSOCKET;
     
+    size_t buffsize = NETPKT_HDR_SIZE + size;
+    if (buffsize > NET_MAX_PACKET) return NETERROR_INVALIDSIZE;
 
     netpkthdr_t header = {
         .size = size,
         .type = type,
-        .sequence = chan->out_sequence++
+        .sequence = chan->out_sequence + 1
     };
-    
-    size_t buffsize = NETPKT_HDR_SIZE + size;
+
     char buff[buffsize]; 
     size_t pos = 0;
     _write_header(buff, &pos, &header);
     memcpy(buff + pos, data, size);
 
-    return netsock_senddata(sock, chan->remote, buff, buffsize);
+    size_t sent = netsock_senddata(sock, chan->remote, buff, buffsize);
+    if (sent <= 0) return sent;
+
+
+    netchan_updatesequence_out(chan);
+    return sent;
 }
 
 netresult_size_t netchan_recv(
@@ -50,15 +87,8 @@ netresult_size_t netchan_recv(
     if ((pkt->type != NET_PACKET_BROADCAST) && !netaddr_equal(from, chan->remote)){
         return NETERROR_UNKNOWNPEER;
     } 
-
-    /* Performed by netsock_receive()
-    size_t pos = 0;
-    netpkthdr_t hdr = _read_header(buff, &pos);
-    pkt->type = hdr.type;
-    pkt->size = hdr.size;
-    pkt->sequence = hdr.sequence;
-    */
-
+    netchan_updatesequence_in(chan);
+    
     return recsize;
 }
 

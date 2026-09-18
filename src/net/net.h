@@ -51,7 +51,7 @@ typedef struct {
     netpacktype_t type;
 }netpkthdr_t;
 
-// Used on receiving end
+// Used on receiving end to contain incoming data, not sent over network 
 typedef struct {
     netpacktype_t type;
     u32 sequence;
@@ -110,8 +110,9 @@ typedef enum { // Keep 'SO_' options first
     
     NETSOCKOPT_MULTICAST_IF = NETSOCKOPT_MULTICASTDUMMY + 1,
     NETSOCKOPT_MULTICAST_TTL = NETSOCKOPT_MULTICASTDUMMY + 2,
-    NETSOCKOPT_IP_ADD_MEMBERSHIP = NETSOCKOPT_MULTICASTDUMMY + 3,
-    NETSOCKOPT_IP_DROP_MEMBERSHIP = NETSOCKOPT_MULTICASTDUMMY + 4,
+    NETSOCKOPT_MULTICAST_LOOPBACK = NETSOCKOPT_MULTICASTDUMMY + 3,
+    NETSOCKOPT_IP_ADD_MEMBERSHIP = NETSOCKOPT_MULTICASTDUMMY + 4,
+    NETSOCKOPT_IP_DROP_MEMBERSHIP = NETSOCKOPT_MULTICASTDUMMY + 5,
 } netsockopt_t;
 
 static inline netaddr_t netaddr_new(char* ip, u16 port){

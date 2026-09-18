@@ -12,10 +12,6 @@
 #include <unistd.h>
 
 
-static inline 
-netaddr_t _sockaddr_to_netaddr(struct sockaddr_in addr){
-    return (netaddr_t){.port = addr.sin_port, .ip = addr.sin_addr.s_addr};
-}
 
 clientid_t _id_clientaddr(netserver_t *server, netaddr_t addr){
     for (u32 i = 0; i < server->client_count; i++){
@@ -212,17 +208,15 @@ netserver_t* NetServer_Init(int client_limit, uint32_t tickrate, u16 port, u16 b
     server->clients = calloc(client_limit, sizeof(net_svclient_t)); 
     server->client_limit = client_limit;
     server->tickrate = tickrate;
-    //server->local_addr = netaddr_new("192.168.1.161", port);
     server->broadcast_addr =  netaddr_newmulticast(broadcast_port);
     server->net_addr = netaddr_getnet(port);
-    //server->broadcast_addr = netaddr_new("0.0.0.0", broadcast_port);
     server->socket_udp = netsock_create_udp(); 
     server->socket_broadcast = netsock_create_udp();
-    server->broadcast_interval = 4.0f;
-    /* ONLY USED WITHOUT MUTLICAST
+    server->broadcast_interval = 3.0f;
+    netsock_setopt(server->socket_broadcast, NETSOCKOPT_MULTICAST_IF, true);
+    netsock_setopt(server->socket_broadcast, NETSOCKOPT_MULTICAST_LOOPBACK, true);
     netsock_setopt(server->socket_broadcast, NETSOCKOPT_BROADCAST, true);
     netsock_setopt(server->socket_broadcast, NETSOCKOPT_REUSEADDR, true);
-    */ 
     if (!netsock_bind(server->socket_udp, netaddr_newany(port))){
         fprintf(stderr, "Failed to bind server socket\n");
         netsock_close(server->socket_udp);
@@ -231,16 +225,6 @@ netserver_t* NetServer_Init(int client_limit, uint32_t tickrate, u16 port, u16 b
         free(server);
         return NULL;
     }
-    /*
-    if (!netsock_bind(server->socket_broadcast, server->broadcast_addr)){
-        fprintf(stderr, "Failed to bind server broadcast socket\n");
-        netsock_close(server->socket_udp);
-        netsock_close(server->socket_broadcast);
-        free(server->clients);
-        free(server);
-        return NULL;
-    }
-    */
 
 
     previous_tick = plt_timemillis();

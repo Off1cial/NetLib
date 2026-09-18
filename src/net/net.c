@@ -78,21 +78,6 @@ netresult_t netsock_bind(netsock_t sock, netaddr_t addr){
 
 
 
-/*
-// For use on clients
-netresult_t netsock_connect(netsock_t sock, netaddr_t addr){
-#ifdef _WIN32
-    return NET_FAILURE;
-#else
-    struct sockaddr_in in = _netaddr_to_sockaddr(addr);
-    int res = connect(sock, (struct sockaddr*)&in, sizeof(in));
-    if (res < 0)
-        return NET_FAILURE;
-    return NET_SUCCESS;
-#endif
-}
-*/
-
 netresult_t netsock_joinmulticast(netsock_t sock, netaddr_t group, netaddr_t iface){
     struct ip_mreq mreq;
     mreq.imr_multiaddr.s_addr = htonl(group.ip);
@@ -153,7 +138,7 @@ netresult_size_t netsock_receive(
     netpacket_t* outpkt
 ){
     if (NETSOCK_ISNULL(sock))
-        return 0;
+        return NETERROR_INVALIDSOCKET;
 
     struct sockaddr_in from = {0};
     socklen_t fromlen = sizeof(from);

@@ -33,6 +33,9 @@ netclient_t* NetClient_Init(const char* name, size_t namelen, u16 broadcast_port
     netsock_setopt(client->socket_broadcast, NETSOCKOPT_REUSEADDR, true);
     netaddr_t broadcast_addr = netaddr_newany(broadcast_port);
     netaddr_t group = netaddr_newmulticast(broadcast_port);
+
+    netaddr_t local = netaddr_getnet(0);
+
     if (!netsock_bind(client->socket_broadcast, broadcast_addr)){
         netsock_close(client->connection.socket_udp);
         netsock_close(client->socket_broadcast);
@@ -41,16 +44,13 @@ netclient_t* NetClient_Init(const char* name, size_t namelen, u16 broadcast_port
     }
     if (!netsock_joinmulticast(client->socket_broadcast, group, netaddr_newany(0))){
         printf("Failed to join multicast group\n");
-        return NET_FAILURE;
+        return NET_NULL;
     }
 
     char hostname[256];
     char hostip[256];
-
     gethostname(hostname, 256);
-    struct hostent *host = gethostbyname(hostname);
-    strcpy(hostip, inet_ntoa(*(struct in_addr*)host->h_addr_list[0]));
-    printf("Client %s ip: %s\n",hostname, hostip);
+    printf("Client %s ip: %s\n", hostname, netaddr_to_string(local, hostip, 256));
 
     previous = plt_timemillis();
     client->cstate = NETC_STATE_IDLE;
@@ -124,8 +124,8 @@ void NetClient_Run(netclient_t* client){
     previous = now;
     accum += dt;
     while (accum >= (1.0f / client->update_rate)){
-        printf("STATE= %d\n", client->cstate);
         if (client->cstate == NETC_STATE_IDLE){
+            printf("Searching for broadcasts\n");
             cl_recv_broadcast(client);
         }
         cl_recv(client);
@@ -151,7 +151,7 @@ void NetClient_Run(netclient_t* client){
 
 
 
-static void _handle_handshake_acc(netclient_t* client){
+static void _handle_handshake_accept(netclient_t* client){
     client->connection.chan.state = NETCHAN_CONNECTED;
     client->cstate = NETC_STATE_JOINING;
 }
@@ -168,6 +168,7 @@ static void cl_recv_broadcast(netclient_t* client){
                     client->socket_broadcast, 
                     buff, 
                     NET_MAX_PACKET, &from, &brdcst);
+        printf("Recvsize = %d\n", recvsize);
         if (recvsize <= 0) break;
         if (brdcst.type != NET_PACKET_BROADCAST) continue;    
         size_t pos = 0;
@@ -197,7 +198,7 @@ static void cl_recv(netclient_t* client){
         switch(incoming.type){
             case NET_PACKET_HNDSHK_ACC:
                 printf("Handshake accepted: %s\n", incoming.data);
-                _handle_handshake_acc(client);
+                _handle_handshake_accept(client);
                 break;
             case NET_PACKET_HNDSHK_DEN:
                 printf("Handshake denied: %s\n", incoming.data);

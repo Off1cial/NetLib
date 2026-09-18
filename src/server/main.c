@@ -3,7 +3,7 @@
 #include "net/server.h"
 
 #define MAX_CLIENTS 2
-#define TICKRATE 4
+#define TICKRATE 20
 #define PORT 27015
 #define BROADCAST_PORT (PORT + 1)
 
@@ -15,7 +15,10 @@ netserver_t* server = NET_NULL;
 void is_running(void){
     //printf("Is running\n");
     netresult_size_t size = NetServer_Broadcast(server, BROADCASTMSG, BROADCASTMSG_SIZE);
-    if (size > 0)printf("Broadcasted %dB\n", size);
+    if (size > 0)
+        printf("Broadcasted %dB\n", size);
+    else if (size < 0)
+     printf("Broadcast error: %d\n", size);
 }
 
 void sv_shutdown(void){

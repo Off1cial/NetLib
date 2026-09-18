@@ -14,8 +14,16 @@ typedef struct {
     u32 out_sequence; // Increments on outgoing data
     u32 in_sequence; // Increments on incoming data
     u32 ack;        // Sequence number of last acknowledged packet
-} netchan_t; // Net channel?
+    u32 in_sequence_bits; // Which of the last 32 in bound transmissions have we properly received
 
+    
+    // Millisecond timers
+    double t_lastrecv_ms;
+    double t_lastsend_ms;
+} netchan_t; 
+
+
+netchan_t netchan_new(netaddr_t remote);
 
 netresult_size_t netchan_send(
         netchan_t* chan, 
