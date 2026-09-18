@@ -280,7 +280,7 @@ netresult_size_t NetServer_Broadcast(netserver_t* server, void* data, size_t dat
     _write_u32(buff, &pos, server->tickrate);
     _write_u32(buff, &pos, server->client_count);
     _write_u32(buff, &pos, server->client_limit);
-    memcpy(buff + pos, data, datalen);
+    if (data)memcpy(buff + pos, data, datalen);
     return netsock_senddata(server->socket_broadcast, server->broadcast_addr, buff, buffsize);
 }
 
@@ -348,7 +348,15 @@ netserver_t* NetServer_Init(int client_limit, uint32_t tickrate, u16 port, u16 b
 
 void NetServer_Shutdown(netserver_t* server){
     if (!server) return;
-    // Broadcast closing packet with msg
+    char msg[] = "Server shutting down\0";
+    printf("\n%s\n", msg);
+    
+    for (u32 i = 0; i < server->client_limit; i++){
+        net_svclient_t* cl = &server->clients[i];
+        if (cl->state != CL_FREE) 
+            netchan_send(&cl->chan, server->socket_udp, NET_PACKET_HNDSHK_DEN, msg, strlen(msg) + 1);
+        remove_client(server, &server->clients[i]);
+    }
     DOFUNC(server->func_shutdown);
     free(server->clients);
     netsock_close(server->socket_udp);

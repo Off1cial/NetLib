@@ -56,4 +56,5 @@ void NetServer_Run(netserver_t* server);
 
 
 
+// Multicast information of your choosing, automatically writes 'data' into a packet and sends
 netresult_size_t NetServer_Broadcast(netserver_t* server, void* data, size_t datalen);

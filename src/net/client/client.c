@@ -132,9 +132,7 @@ void NetClient_Run(netclient_t* client){
     previous = now;
     accum += dt;
     while (accum >= (1.0f / client->update_rate)){
-        if (client->cstate == NETC_STATE_IDLE){
-            cl_recv_broadcast(client);
-        }
+        cl_recv_broadcast(client);
         cl_recv(client);
         switch(client->cstate){
             case NETC_STATE_ATTEMPTING:
@@ -184,6 +182,7 @@ static void cl_recv_broadcast(netclient_t* client){
                     NET_MAX_PACKET, &from, &brdcst);
         if (recvsize <= 0) break;
         if (brdcst.type != NET_PACKET_BROADCAST) continue;
+        if (client->cstate != NETC_STATE_IDLE) continue; // Check after recv to drain socket
         size_t pos = 0;
         netpkthdr_t hdr = _read_header(buff, &pos);
         (void)hdr;
@@ -222,6 +221,7 @@ static void cl_recv(netclient_t* client){
                 break;
             case NET_PACKET_HNDSHK_DEN:
                 printf("Handshake denied: %s\n", incoming.data);
+                client->cstate = NETC_STATE_IDLE;
                 break;
 
             default: break;
